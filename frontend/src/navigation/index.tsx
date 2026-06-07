@@ -150,7 +150,7 @@ function AuthNavigator() {
   );
 }
 
-const ONBOARDING_KEY = (id: string | number) => `@comprinhas:onboardingDone:${id}`;
+const ONBOARDING_KEY = (id: string | number) => `@mealsync:onboardingDone:${id}`;
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useSelector((s: RootState) => s.auth);

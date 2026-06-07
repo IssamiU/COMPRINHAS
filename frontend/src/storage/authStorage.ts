@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = "@comprinhas:auth";
+const STORAGE_KEY = "@mealsync:auth";
 
 export type AuthData = {
   user: {

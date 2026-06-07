@@ -100,7 +100,7 @@ export default function HelpSupportScreen({ navigation }: any) {
           ))}
         </View>
 
-        <Text style={styles.version}>COMPRINHAS · versão 1.0.0</Text>
+        <Text style={styles.version}>MEALSYNC · versão 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

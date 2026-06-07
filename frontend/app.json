@@ -1,22 +1,25 @@
 {
   "expo": {
-    "name": "Comprinhas",
-    "slug": "Comprinhas",
+    "name": "MealSync",
+    "slug": "mealsync",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "comprinhas",
+    "scheme": "mealsync",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.issami.mealsync",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSFaceIDUsageDescription": "Use o Face ID para entrar no MealSync mais rapidamente."
       }
     },
     "android": {
+      "package": "com.issami.mealsync",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,7 +46,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-local-authentication"
     ],
     "experiments": {
       "reactCompiler": true

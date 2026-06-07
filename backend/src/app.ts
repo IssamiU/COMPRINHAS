@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (_req, res) => {
-  res.json({ message: "API Comprinhas funcionando" });
+  res.json({ message: "API MealSync funcionando" });
 });
 
 app.use("/auth", authRoutes);
