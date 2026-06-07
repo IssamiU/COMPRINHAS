@@ -2,103 +2,114 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ShoppingList, ShoppingListItem } from "../../types/shopping";
 
 type ShoppingListState = {
-  lists: ShoppingList[];
-  // Mantido para compatibilidade com o DashboardScreen que conta shoppingItems
+  // Chave: userId — cada usuário tem suas próprias listas
+  listsByUser: Record<string, ShoppingList[]>;
+  // Mantido para compatibilidade com o DashboardScreen
   items: ShoppingListItem[];
 };
 
 const initialState: ShoppingListState = {
-  lists: [],
+  listsByUser: {},
   items: [],
 };
+
+// Helpers
+function getUserLists(state: ShoppingListState, userId: string): ShoppingList[] {
+  if (!state.listsByUser[userId]) state.listsByUser[userId] = [];
+  return state.listsByUser[userId];
+}
+
+function syncItems(state: ShoppingListState, userId: string) {
+  state.items = (state.listsByUser[userId] ?? []).flatMap((l) => l.items);
+}
 
 const shoppingListSlice = createSlice({
   name: "shoppingList",
   initialState,
   reducers: {
-    // ─── Gerenciamento de listas ────────────────────────────────────────────
+    // ─── Gerenciamento de listas ─────────────────────────────────────────────
 
-    createList: (state, action: PayloadAction<ShoppingList>) => {
-      state.lists.push(action.payload);
+    createList: (state, action: PayloadAction<ShoppingList & { userId: string }>) => {
+      const { userId, ...list } = action.payload;
+      getUserLists(state, userId).push(list);
+      syncItems(state, userId);
     },
 
-    renameList: (state, action: PayloadAction<{ id: string; name: string }>) => {
-      const list = state.lists.find((l) => l.id === action.payload.id);
-      if (list) list.name = action.payload.name;
+    renameList: (state, action: PayloadAction<{ id: string; name: string; userId: string }>) => {
+      const { id, name, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === id);
+      if (list) list.name = name;
     },
 
-    deleteList: (state, action: PayloadAction<string>) => {
-      state.lists = state.lists.filter((l) => l.id !== action.payload);
-      // Atualiza o contador do dashboard
-      state.items = state.lists.flatMap((l) => l.items);
+    deleteList: (state, action: PayloadAction<{ id: string; userId: string }>) => {
+      const { id, userId } = action.payload;
+      state.listsByUser[userId] = getUserLists(state, userId).filter((l) => l.id !== id);
+      syncItems(state, userId);
     },
 
-    // ─── Itens dentro de uma lista específica ───────────────────────────────
+    // Selector helper — não é reducer, mas mantém compatibilidade
+    // As telas usam useSelector para buscar lists do userId atual
+
+    // ─── Itens ──────────────────────────────────────────────────────────────
 
     setShoppingList: (
       state,
-      action: PayloadAction<{ listId: string; items: ShoppingListItem[] }>
+      action: PayloadAction<{ listId: string; items: ShoppingListItem[]; userId: string }>
     ) => {
-      const list = state.lists.find((l) => l.id === action.payload.listId);
-      if (list) {
-        list.items = action.payload.items;
-        state.items = state.lists.flatMap((l) => l.items);
-      }
+      const { listId, items, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (list) { list.items = items; syncItems(state, userId); }
     },
 
     addShoppingListItem: (
       state,
-      action: PayloadAction<{ listId: string; item: ShoppingListItem }>
+      action: PayloadAction<{ listId: string; item: ShoppingListItem; userId: string }>
     ) => {
-      const list = state.lists.find((l) => l.id === action.payload.listId);
-      if (list) {
-        list.items.push(action.payload.item);
-        state.items = state.lists.flatMap((l) => l.items);
-      }
+      const { listId, item, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (list) { list.items.push(item); syncItems(state, userId); }
     },
 
     removeShoppingListItem: (
       state,
-      action: PayloadAction<{ listId: string; itemId: string }>
+      action: PayloadAction<{ listId: string; itemId: string; userId: string }>
     ) => {
-      const list = state.lists.find((l) => l.id === action.payload.listId);
-      if (list) {
-        list.items = list.items.filter((i) => i.id !== action.payload.itemId);
-        state.items = state.lists.flatMap((l) => l.items);
-      }
+      const { listId, itemId, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (list) { list.items = list.items.filter((i) => i.id !== itemId); syncItems(state, userId); }
     },
 
     toggleShoppingListItem: (
       state,
-      action: PayloadAction<{ listId: string; itemId: string }>
+      action: PayloadAction<{ listId: string; itemId: string; userId: string }>
     ) => {
-      const list = state.lists.find((l) => l.id === action.payload.listId);
+      const { listId, itemId, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
       if (list) {
-        const item = list.items.find((i) => i.id === action.payload.itemId);
+        const item = list.items.find((i) => i.id === itemId);
         if (item) item.checked = !item.checked;
       }
     },
 
     updateShoppingListItem: (
       state,
-      action: PayloadAction<{ listId: string; item: ShoppingListItem }>
+      action: PayloadAction<{ listId: string; item: ShoppingListItem; userId: string }>
     ) => {
-      const list = state.lists.find((l) => l.id === action.payload.listId);
+      const { listId, item, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
       if (list) {
-        const index = list.items.findIndex((i) => i.id === action.payload.item.id);
-        if (index !== -1) {
-          list.items[index] = action.payload.item;
-          state.items = state.lists.flatMap((l) => l.items);
-        }
+        const index = list.items.findIndex((i) => i.id === item.id);
+        if (index !== -1) { list.items[index] = item; syncItems(state, userId); }
       }
     },
 
-    clearShoppingList: (state, action: PayloadAction<string>) => {
-      const list = state.lists.find((l) => l.id === action.payload);
-      if (list) {
-        list.items = [];
-        state.items = state.lists.flatMap((l) => l.items);
-      }
+    clearShoppingList: (
+      state,
+      action: PayloadAction<{ listId: string; userId: string }>
+    ) => {
+      const { listId, userId } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (list) { list.items = []; syncItems(state, userId); }
     },
   },
 });

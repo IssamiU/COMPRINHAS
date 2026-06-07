@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -20,11 +22,12 @@ import { colors } from "../../theme/colors";
 
 export default function ShoppingListsScreen({ navigation }: any) {
   const dispatch = useDispatch();
-  const lists = useSelector((state: RootState) => state.shoppingList.lists);
+  const userId   = useSelector((s: RootState) => s.auth.user?.id ?? "") as string;
+  const lists    = useSelector((s: RootState) => s.shoppingList.listsByUser[userId] ?? []);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingList, setEditingList] = useState<ShoppingList | null>(null);
-  const [listName, setListName] = useState("");
+  const [editingList,  setEditingList]  = useState<ShoppingList | null>(null);
+  const [listName,     setListName]     = useState("");
 
   function openCreateModal() { setEditingList(null); setListName(""); setModalVisible(true); }
   function openRenameModal(list: ShoppingList) { setEditingList(list); setListName(list.name); setModalVisible(true); }
@@ -33,9 +36,15 @@ export default function ShoppingListsScreen({ navigation }: any) {
   function handleSave() {
     if (!listName.trim()) { Alert.alert("Atenção", "Digite um nome para a lista."); return; }
     if (editingList) {
-      dispatch(renameList({ id: editingList.id, name: listName.trim() }));
+      dispatch(renameList({ id: editingList.id, name: listName.trim(), userId }));
     } else {
-      dispatch(createList({ id: Date.now().toString(), name: listName.trim(), createdAt: new Date().toISOString(), items: [] }));
+      dispatch(createList({
+        id: Date.now().toString(),
+        name: listName.trim(),
+        createdAt: new Date().toISOString(),
+        items: [],
+        userId,
+      }));
     }
     closeModal();
   }
@@ -43,7 +52,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
   function handleDelete(list: ShoppingList) {
     Alert.alert("Excluir lista", `Deseja excluir "${list.name}"?`, [
       { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: () => dispatch(deleteList(list.id)) },
+      { text: "Excluir", style: "destructive", onPress: () => dispatch(deleteList({ id: list.id, userId })) },
     ]);
   }
 
@@ -58,7 +67,6 @@ export default function ShoppingListsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lista de Compras</Text>
         <Pressable style={styles.addButton} onPress={openCreateModal}>
@@ -83,7 +91,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
         }
         renderItem={({ item }) => {
           const progress = getProgress(item);
-          const checked = item.items.filter((i) => i.checked).length;
+          const checked  = item.items.filter((i) => i.checked).length;
           return (
             <Pressable
               style={styles.card}
@@ -92,7 +100,6 @@ export default function ShoppingListsScreen({ navigation }: any) {
               <View style={styles.cardIcon}>
                 <Ionicons name="basket-outline" size={22} color={colors.primary} />
               </View>
-
               <View style={styles.cardContent}>
                 <View style={styles.cardTop}>
                   <Text style={styles.cardName}>{item.name}</Text>
@@ -105,11 +112,9 @@ export default function ShoppingListsScreen({ navigation }: any) {
                     </Pressable>
                   </View>
                 </View>
-
                 <Text style={styles.cardMeta}>
                   {checked} de {item.items.length} {item.items.length === 1 ? "item" : "itens"} · {formatDate(item.createdAt)}
                 </Text>
-
                 {item.items.length > 0 && (
                   <View style={styles.progressContainer}>
                     <View style={styles.progressBar}>
@@ -124,9 +129,13 @@ export default function ShoppingListsScreen({ navigation }: any) {
         }}
       />
 
-      {/* Modal criar/renomear */}
+      {/* Modal criar/renomear — com KeyboardAvoidingView */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalKAV}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={closeModal} />
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
               {editingList ? "Renomear lista" : "Nova lista"}
@@ -148,7 +157,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
               <Text style={styles.secondaryBtnText}>Cancelar</Text>
             </Pressable>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -177,8 +186,10 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
   emptyButton: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
   emptyButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", padding: 24 },
-  modalCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 24 },
+  // Modal
+  modalKAV: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: Platform.OS === "ios" ? 40 : 24 },
   modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
   input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 16, color: colors.textPrimary, fontSize: 15 },
   primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginBottom: 10 },

@@ -8,99 +8,115 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
-import { RootState } from "../../store";
 import { colors } from "../../theme/colors";
 
-type Preference = {
-  key: string;
-  label: string;
-  description: string;
-  icon: string;
-  color: string;
-  bg: string;
-};
+const DIETS        = ["Onívoro", "Vegetariano", "Vegano", "Pescetariano", "Low Carb", "Cetogênica"];
+const RESTRICTIONS = ["Sem glúten", "Sem lactose", "Sem açúcar", "Sem amendoim", "Sem frutos do mar", "Sem ovo", "Sem soja"];
+const DISLIKES     = ["Cebola", "Coentro", "Pimenta", "Berinjela", "Quiabo", "Cogumelo"];
+const GOALS        = ["Perder peso", "Ganhar massa", "Comer mais saudável", "Economizar", "Variar o cardápio"];
+const SPICE        = ["Sem", "Suave", "Médio", "Forte", "Muito forte"];
 
-const PREFERENCES: Preference[] = [
-  { key: "vegetarian",  label: "Vegetariano",   description: "Sem carnes de qualquer tipo",      icon: "🥦", color: "#16A34A", bg: "#DCFCE7" },
-  { key: "vegan",       label: "Vegano",         description: "Sem produtos de origem animal",    icon: "🌱", color: "#15803D", bg: "#F0FDF4" },
-  { key: "glutenFree",  label: "Sem glúten",     description: "Restrição a trigo, centeio e cevada", icon: "🌾", color: "#B45309", bg: "#FEF3C7" },
-  { key: "lactoseFree", label: "Sem lactose",    description: "Restrição a leite e derivados",   icon: "🥛", color: "#1D4ED8", bg: "#DBEAFE" },
-  { key: "lowCarb",     label: "Low Carb",       description: "Baixo consumo de carboidratos",   icon: "🥩", color: "#DC2626", bg: "#FEE2E2" },
-  { key: "sugarFree",   label: "Sem açúcar",     description: "Evita açúcares adicionados",      icon: "🚫", color: "#7C3AED", bg: "#EDE9FE" },
-];
+function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, selected && styles.chipActive]}
+    >
+      {selected && <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 4 }} />}
+      <Text style={[styles.chipText, selected && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function FoodPreferencesScreen({ navigation }: any) {
-  const user = useSelector((state: RootState) => state.auth.user);
+  const [diet,         setDiet]        = useState("Vegetariano");
+  const [restrictions, setRestrictions]= useState<string[]>(["Sem glúten"]);
+  const [dislikes,     setDislikes]    = useState<string[]>([]);
+  const [goals,        setGoals]       = useState<string[]>(["Comer mais saudável"]);
+  const [spice,        setSpice]       = useState(1); // índice em SPICE
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  const [saving, setSaving] = useState(false);
-
-  function toggle(key: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  function toggle(arr: string[], val: string, set: (v: string[]) => void) {
+    set(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
   }
 
-  async function handleSave() {
-    setSaving(true);
-    // TODO: chamar endpoint PUT /users/me/preferences quando implementado
-    setTimeout(() => {
-      setSaving(false);
-      Alert.alert("Sucesso", "Preferências atualizadas!", [{ text: "OK", onPress: () => navigation.goBack() }]);
-    }, 600);
+  function handleSave() {
+    // TODO: chamar PUT /users/me/preferences quando endpoint for implementado
+    Alert.alert("Sucesso", "Preferências atualizadas!", [{ text: "OK", onPress: () => navigation.goBack() }]);
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.headerTitle}>Preferências alimentares</Text>
-        <View style={{ width: 38 }} />
+        <Text style={styles.headerTitle}>Preferências Alimentares</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>
-          Selecione suas restrições e preferências. Elas podem ser usadas para filtrar receitas.
-        </Text>
 
-        {PREFERENCES.map((pref) => {
-          const active = selected.has(pref.key);
-          return (
-            <Pressable
-              key={pref.key}
-              style={[styles.card, active && styles.cardActive]}
-              onPress={() => toggle(pref.key)}
-            >
-              <View style={[styles.iconBox, { backgroundColor: pref.bg }]}>
-                <Text style={styles.iconText}>{pref.icon}</Text>
-              </View>
-              <View style={styles.cardText}>
-                <Text style={[styles.cardLabel, active && { color: colors.primary }]}>{pref.label}</Text>
-                <Text style={styles.cardDesc}>{pref.description}</Text>
-              </View>
-              <View style={[styles.checkbox, active && styles.checkboxActive]}>
-                {active && <Ionicons name="checkmark" size={14} color="#fff" />}
-              </View>
-            </Pressable>
-          );
-        })}
+        {/* Tipo de dieta */}
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Tipo de dieta</Text>
+          <Text style={styles.blockSubtitle}>Escolha apenas uma</Text>
+          <View style={styles.chipWrap}>
+            {DIETS.map((d) => <Chip key={d} label={d} selected={diet === d} onPress={() => setDiet(d)} />)}
+          </View>
+        </View>
 
-        <Pressable
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveBtnText}>{saving ? "Salvando..." : "Salvar preferências"}</Text>
+        {/* Restrições */}
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Restrições e alergias</Text>
+          <Text style={styles.blockSubtitle}>As receitas filtrarão por estas restrições</Text>
+          <View style={styles.chipWrap}>
+            {RESTRICTIONS.map((r) => (
+              <Chip key={r} label={r} selected={restrictions.includes(r)} onPress={() => toggle(restrictions, r, setRestrictions)} />
+            ))}
+          </View>
+        </View>
+
+        {/* Ingredientes que não gosta */}
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Ingredientes que não gosto</Text>
+          <Text style={styles.blockSubtitle}>Vamos evitar nas sugestões</Text>
+          <View style={styles.chipWrap}>
+            {DISLIKES.map((d) => (
+              <Chip key={d} label={d} selected={dislikes.includes(d)} onPress={() => toggle(dislikes, d, setDislikes)} />
+            ))}
+          </View>
+        </View>
+
+        {/* Nível de pimenta */}
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Nível de pimenta</Text>
+          <View style={styles.spiceRow}>
+            {SPICE.map((label, i) => (
+              <Pressable
+                key={label}
+                onPress={() => setSpice(i)}
+                style={[styles.spiceBtn, i === spice && styles.spiceBtnActive]}
+              >
+                <Text style={[styles.spiceText, i === spice && styles.spiceTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Objetivos */}
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Objetivos</Text>
+          <View style={styles.chipWrap}>
+            {GOALS.map((g) => (
+              <Chip key={g} label={g} selected={goals.includes(g)} onPress={() => toggle(goals, g, setGoals)} />
+            ))}
+          </View>
+        </View>
+
+        <Pressable style={styles.saveBtn} onPress={handleSave}>
+          <Text style={styles.saveBtnText}>Salvar Preferências</Text>
         </Pressable>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -108,21 +124,23 @@ export default function FoodPreferencesScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  container: { paddingHorizontal: 20, paddingBottom: 40 },
-  subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 20 },
-  card: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: colors.border },
-  cardActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  iconBox: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  iconText: { fontSize: 22 },
-  cardText: { flex: 1 },
-  cardLabel: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
-  cardDesc: { fontSize: 12, color: colors.textSecondary },
-  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  checkboxActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  saveBtn: { marginTop: 24, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: "center" },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  header: { height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  container: { padding: 16, paddingBottom: 100, gap: 0 },
+  block: { marginBottom: 28 },
+  blockTitle: { fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
+  blockSubtitle: { fontSize: 12, color: colors.textMuted, marginBottom: 12 },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 36, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 12, fontWeight: "600", color: colors.textPrimary },
+  chipTextActive: { color: "#fff" },
+  spiceRow: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
+  spiceBtn: { paddingHorizontal: 12, height: 36, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  spiceBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  spiceText: { fontSize: 12, fontWeight: "600", color: colors.textPrimary },
+  spiceTextActive: { color: "#fff" },
+  saveBtn: { height: 52, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

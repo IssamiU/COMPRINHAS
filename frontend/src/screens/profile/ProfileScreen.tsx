@@ -17,28 +17,21 @@ import { removeAuth } from "../../storage/authStorage";
 import { colors } from "../../theme/colors";
 
 export default function ProfileScreen({ navigation }: any) {
-  const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
-  const recipes = useSelector((state: RootState) => state.recipes.recipes);
-  const plannedMeals = useSelector((state: RootState) => state.planner.plannedMeals);
-
+  const dispatch     = useDispatch();
+  const user         = useSelector((s: RootState) => s.auth.user);
+  const recipes      = useSelector((s: RootState) => s.recipes.recipes);
+  const plannedMeals = useSelector((s: RootState) => s.planner.plannedMeals);
+  const userId       = String(user?.id ?? "");
+  const shoppingLists= useSelector((s: RootState) => s.shoppingList.listsByUser[userId] ?? []);
   const favoritesCount = recipes.filter((r) => r.isFavorite).length;
 
   async function handleLogout() {
     Alert.alert("Sair da conta", "Tem certeza que deseja sair?", [
       { text: "Cancelar", style: "cancel" },
-      {
-        text: "Sair",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await removeAuth();
-            dispatch(signOut());
-          } catch {
-            Alert.alert("Erro", "Não foi possível sair da conta.");
-          }
-        },
-      },
+      { text: "Sair", style: "destructive", onPress: async () => {
+        try { await removeAuth(); dispatch(signOut()); }
+        catch { Alert.alert("Erro", "Não foi possível sair da conta."); }
+      }},
     ]);
   }
 
@@ -51,40 +44,35 @@ export default function ProfileScreen({ navigation }: any) {
     label: string;
     sublabel?: string;
     onPress?: () => void;
-    color?: string;
+    iconBg?: string;
+    iconColor?: string;
   };
 
   const accountItems: MenuItem[] = [
-    { icon: "person-outline", label: "Dados pessoais", sublabel: "Nome, e-mail, senha" },
-    { icon: "leaf-outline", label: "Preferências alimentares", sublabel: "Vegetariano, sem glúten..." },
-    { icon: "notifications-outline", label: "Notificações", sublabel: "Lembretes de refeições" },
+    { icon: "person-outline",        label: "Dados pessoais",           sublabel: "Nome, e-mail, senha",        onPress: () => navigation.navigate("PersonalData"),          iconBg: colors.primaryLight, iconColor: colors.primary },
+    { icon: "leaf-outline",          label: "Preferências alimentares", sublabel: "Dieta, restrições, objetivos",onPress: () => navigation.navigate("FoodPreferences"),       iconBg: "#DCFCE7",           iconColor: "#16A34A" },
+    { icon: "notifications-outline", label: "Notificações",             sublabel: "Lembretes de refeições",      onPress: () => navigation.navigate("NotificationsSettings"), iconBg: "#FEF3C7",           iconColor: "#F59E0B" },
   ];
 
   const activityItems: MenuItem[] = [
-    {
-      icon: "heart-outline",
-      label: "Receitas favoritas",
-      sublabel: `${favoritesCount} receitas`,
-      onPress: () => navigation.navigate("RecipesTab"),
-    },
-    {
-      icon: "time-outline",
-      label: "Histórico de preparo",
-      sublabel: "Receitas já preparadas",
-      onPress: () => navigation.navigate("RecipesTab", { screen: "History" }),
-    },
+    { icon: "heart-outline", label: "Receitas favoritas",   sublabel: `${favoritesCount} receitas`,  onPress: () => navigation.navigate("RecipesTab"),                          iconBg: "#FEE2E2", iconColor: colors.danger },
+    { icon: "time-outline",  label: "Histórico de preparo", sublabel: "Receitas já preparadas",      onPress: () => navigation.navigate("RecipesTab", { screen: "History" }),   iconBg: "#FEF3C7", iconColor: "#F59E0B" },
   ];
 
-  function MenuSection({ title, items }: { title: string; items: MenuItem[] }) {
+  const otherItems: MenuItem[] = [
+    { icon: "help-circle-outline", label: "Ajuda e Suporte", onPress: () => navigation.navigate("HelpSupport"), iconBg: "#DBEAFE", iconColor: "#2563EB" },
+  ];
+
+  function Section({ title, items }: { title: string; items: MenuItem[] }) {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{title}</Text>
         <View style={styles.sectionCard}>
-          {items.map((item, index) => (
+          {items.map((item, i) => (
             <React.Fragment key={item.label}>
               <Pressable style={styles.menuItem} onPress={item.onPress}>
-                <View style={[styles.menuIcon, { backgroundColor: item.color ? `${item.color}20` : colors.primaryLight }]}>
-                  <Ionicons name={item.icon} size={18} color={item.color ?? colors.primary} />
+                <View style={[styles.menuIcon, { backgroundColor: item.iconBg ?? colors.primaryLight }]}>
+                  <Ionicons name={item.icon} size={18} color={item.iconColor ?? colors.primary} />
                 </View>
                 <View style={styles.menuText}>
                   <Text style={styles.menuLabel}>{item.label}</Text>
@@ -92,7 +80,7 @@ export default function ProfileScreen({ navigation }: any) {
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </Pressable>
-              {index < items.length - 1 && <View style={styles.divider} />}
+              {i < items.length - 1 && <View style={styles.divider} />}
             </React.Fragment>
           ))}
         </View>
@@ -107,9 +95,7 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Header do perfil */}
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name ? getInitials(user.name) : "?"}
-            </Text>
+            <Text style={styles.avatarText}>{user?.name ? getInitials(user.name) : "?"}</Text>
           </View>
           <Text style={styles.name}>{user?.name ?? "Usuário"}</Text>
           <Text style={styles.email}>{user?.email ?? ""}</Text>
@@ -133,24 +119,9 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
 
-        <MenuSection title="CONTA" items={accountItems} />
-        <MenuSection title="ATIVIDADE" items={activityItems} />
-
-        {/* Sair */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>OUTROS</Text>
-          <View style={styles.sectionCard}>
-            <Pressable style={styles.menuItem}>
-              <View style={[styles.menuIcon, { backgroundColor: "#DBEAFE" }]}>
-                <Ionicons name="help-circle-outline" size={18} color="#2563EB" />
-              </View>
-              <View style={styles.menuText}>
-                <Text style={styles.menuLabel}>Ajuda e Suporte</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            </Pressable>
-          </View>
-        </View>
+        <Section title="CONTA"     items={accountItems} />
+        <Section title="ATIVIDADE" items={activityItems} />
+        <Section title="OUTROS"    items={otherItems} />
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />

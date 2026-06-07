@@ -44,7 +44,6 @@ const CATEGORIES = [
   { key: "Outros",    emoji: "📦" },
 ];
 
-// ── Tela de fallback ──────────────────────────────────────────────────────────
 function NotFoundScreen({ onBack }: { onBack: () => void }) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -60,15 +59,16 @@ function NotFoundScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ── Conteúdo da lista (recebe list e listId já garantidos) ────────────────────
 function ShoppingListContent({
   navigation,
   list,
   listId,
+  userId,
 }: {
   navigation: any;
   list: ShoppingList;
   listId: string;
+  userId: string;
 }) {
   const dispatch     = useDispatch();
   const plannedMeals = useSelector((s: RootState) => s.planner.plannedMeals);
@@ -124,12 +124,12 @@ function ShoppingListContent({
 
     if (editingItem) {
       dispatch(updateShoppingListItem({
-        listId,
+        listId, userId,
         item: { id: editingItem.id, name: fName.trim(), quantity: qty, unit: fUnit, checked: editingItem.checked },
       }));
     } else {
       dispatch(addShoppingListItem({
-        listId,
+        listId, userId,
         item: { id: Date.now().toString(), name: fName.trim(), quantity: qty, unit: fUnit, checked: false },
       }));
     }
@@ -139,7 +139,7 @@ function ShoppingListContent({
   function handleDelete(itemId: string) {
     Alert.alert("Remover", "Deseja remover este item?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Remover", style: "destructive", onPress: () => dispatch(removeShoppingListItem({ listId, itemId })) },
+      { text: "Remover", style: "destructive", onPress: () => dispatch(removeShoppingListItem({ listId, itemId, userId })) },
     ]);
   }
 
@@ -151,7 +151,7 @@ function ShoppingListContent({
     Alert.alert("Gerar lista", "Isso substituirá os itens atuais. Deseja continuar?", [
       { text: "Cancelar", style: "cancel" },
       { text: "Gerar", onPress: () => {
-        dispatch(setShoppingList({ listId, items: generateShoppingListFromPlanner(plannedMeals, recipes) }));
+        dispatch(setShoppingList({ listId, userId, items: generateShoppingListFromPlanner(plannedMeals, recipes) }));
         Alert.alert("Sucesso", "Lista gerada com base no planejamento!");
       }},
     ]);
@@ -161,7 +161,7 @@ function ShoppingListContent({
     if (items.length === 0) { Alert.alert("Atenção", "A lista já está vazia."); return; }
     Alert.alert("Limpar lista", "Remover todos os itens?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Limpar", style: "destructive", onPress: () => dispatch(clearShoppingList(listId)) },
+      { text: "Limpar", style: "destructive", onPress: () => dispatch(clearShoppingList({ listId, userId })) },
     ]);
   }
 
@@ -176,7 +176,6 @@ function ShoppingListContent({
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
@@ -187,7 +186,6 @@ function ShoppingListContent({
         </Pressable>
       </View>
 
-      {/* Barra de progresso */}
       <View style={styles.progressCard}>
         <View style={styles.progressRow}>
           <Text style={styles.progressText}>
@@ -201,7 +199,6 @@ function ShoppingListContent({
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Ações rápidas */}
         <View style={styles.quickActions}>
           <Pressable style={styles.quickBtn} onPress={handleGenerate}>
             <Ionicons name="sparkles-outline" size={15} color={colors.primary} />
@@ -213,7 +210,6 @@ function ShoppingListContent({
           </Pressable>
         </View>
 
-        {/* Lista vazia */}
         {grouped.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="cart-outline" size={48} color={colors.textMuted} />
@@ -232,22 +228,17 @@ function ShoppingListContent({
                     <Text style={styles.groupPillText}>{grpChecked}/{group.items.length}</Text>
                   </View>
                 </View>
-
                 {group.items.map((item, idx) => (
                   <Pressable
                     key={item.id}
                     style={[styles.itemRow, idx === group.items.length - 1 && { borderBottomWidth: 0 }]}
-                    onPress={() => dispatch(toggleShoppingListItem({ listId, itemId: item.id }))}
+                    onPress={() => dispatch(toggleShoppingListItem({ listId, itemId: item.id, userId }))}
                   >
                     <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
                       {item.checked && <Ionicons name="checkmark" size={13} color="#fff" />}
                     </View>
-                    <Text style={[styles.itemName, item.checked && styles.itemChecked]} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={[styles.itemQty, item.checked && styles.itemChecked]}>
-                      {item.quantity} {item.unit}
-                    </Text>
+                    <Text style={[styles.itemName, item.checked && styles.itemChecked]} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.itemQty, item.checked && styles.itemChecked]}>{item.quantity} {item.unit}</Text>
                     <Pressable onPress={() => openEdit(item)} hitSlop={10} style={styles.rowAction}>
                       <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
                     </Pressable>
@@ -262,7 +253,6 @@ function ShoppingListContent({
         )}
       </ScrollView>
 
-      {/* FABs */}
       <View style={styles.fabs}>
         <Pressable style={[styles.fab, styles.fabSecondary]} onPress={handleGenerate}>
           <Ionicons name="sparkles" size={20} color={colors.primary} />
@@ -278,10 +268,8 @@ function ShoppingListContent({
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>{editingItem ? "Editar item" : "Adicionar item"}</Text>
-
           <Text style={styles.fieldLabel}>Nome</Text>
           <TextInput style={styles.input} placeholder="Ex.: Maçã" placeholderTextColor={colors.textMuted} value={fName} onChangeText={setFName} autoFocus returnKeyType="next" />
-
           <View style={styles.rowGap}>
             <View style={{ flex: 1 }}>
               <Text style={styles.fieldLabel}>Quantidade</Text>
@@ -295,13 +283,11 @@ function ShoppingListContent({
               </Pressable>
             </View>
           </View>
-
           <Text style={styles.fieldLabel}>Categoria</Text>
           <Pressable style={[styles.input, styles.pickerBtn]} onPress={() => setCatPickerOpen(true)}>
             <Text style={styles.pickerBtnText}>{fCategory}</Text>
             <Ionicons name="chevron-down" size={15} color={colors.textMuted} />
           </Pressable>
-
           <View style={styles.modalActions}>
             <Pressable style={styles.cancelBtn} onPress={() => { resetForm(); setAddOpen(false); }}>
               <Text style={styles.cancelBtnText}>Cancelar</Text>
@@ -350,33 +336,30 @@ function ShoppingListContent({
   );
 }
 
-// ── Componente raiz ───────────────────────────────────────────────────────────
 export default function ShoppingListScreen({ navigation, route }: any) {
-  const listId: string | undefined = route?.params?.listId;
-  const list = useSelector((s: RootState) =>
-    s.shoppingList.lists.find((l) => l.id === listId)
+  const listId = route?.params?.listId as string | undefined;
+  const userId = useSelector((s: RootState) => String(s.auth.user?.id ?? ""));
+  const list   = useSelector((s: RootState) =>
+    (s.shoppingList.listsByUser[userId] ?? []).find((l) => l.id === listId)
   );
 
   if (!listId || !list) {
     return <NotFoundScreen onBack={() => navigation.goBack()} />;
   }
 
-  return <ShoppingListContent navigation={navigation} list={list} listId={listId} />;
+  return <ShoppingListContent navigation={navigation} list={list} listId={listId} userId={userId} />;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
   notFoundTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
   notFoundSub: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
   backBtn: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
   backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-
   progressCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
   progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   progressText: { fontSize: 13, color: colors.textSecondary },
@@ -384,21 +367,17 @@ const styles = StyleSheet.create({
   progressPct: { color: colors.primary, fontWeight: "700", fontSize: 14 },
   track: { height: 8, backgroundColor: colors.borderLight, borderRadius: 999, overflow: "hidden" },
   fill: { height: "100%", backgroundColor: colors.primary, borderRadius: 999 },
-
   scrollContent: { paddingBottom: 120 },
-
   quickActions: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginVertical: 8 },
   quickBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
   quickBtnDanger: { borderColor: colors.danger },
   quickBtnText: { fontSize: 13, fontWeight: "700", color: colors.primary },
-
   groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
   groupHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
   groupEmoji: { fontSize: 18, marginRight: 8 },
   groupTitle: { flex: 1, fontSize: 14, fontWeight: "700", color: colors.textPrimary },
   groupPill: { backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   groupPillText: { color: colors.primaryDark, fontSize: 11, fontWeight: "700" },
-
   itemRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center", marginRight: 12 },
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
@@ -406,21 +385,17 @@ const styles = StyleSheet.create({
   itemQty: { fontSize: 13, color: colors.textSecondary, marginLeft: 6 },
   itemChecked: { color: colors.textMuted, textDecorationLine: "line-through" },
   rowAction: { padding: 4, marginLeft: 6 },
-
   empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
   emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
-
   fabs: { position: "absolute", right: 20, bottom: 24, alignItems: "center", gap: 12 },
   fab: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   fabPrimary: { backgroundColor: colors.primary },
   fabSecondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
   sheetTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
-
   fieldLabel: { fontSize: 12, fontWeight: "600", color: colors.textMuted, marginBottom: 6, marginTop: 8 },
   input: { minHeight: 46, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.background },
   rowGap: { flexDirection: "row", gap: 12 },
@@ -428,7 +403,6 @@ const styles = StyleSheet.create({
   pickerBtnText: { flex: 1, fontSize: 15, color: colors.textPrimary },
   pickerOption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
   pickerOptionText: { fontSize: 15, color: colors.textPrimary },
-
   modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
   cancelBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
   cancelBtnText: { color: colors.textSecondary, fontWeight: "700" },

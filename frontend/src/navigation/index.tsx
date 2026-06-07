@@ -7,30 +7,26 @@ import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
-import OnboardingScreen from "../screens/onboarding/OnboardingScreen";
-import LoginScreen from "../screens/auth/LoginScreen";
-import RegisterScreen from "../screens/auth/RegisterScreen";
-import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
-import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
-
-import DashboardScreen from "../screens/dashboard/DashboardScreen";
-
-import RecipesListScreen from "../screens/recipes/RecipesListScreen";
-import RecipeDetailsScreen from "../screens/recipes/RecipeDetailsScreen";
-import CreateRecipeScreen from "../screens/recipes/CreateRecipeScreen";
-import EditRecipeScreen from "../screens/recipes/EditRecipeScreen";
+import OnboardingScreen        from "../screens/onboarding/OnboardingScreen";
+import LoginScreen             from "../screens/auth/LoginScreen";
+import RegisterScreen          from "../screens/auth/RegisterScreen";
+import ForgotPasswordScreen    from "../screens/auth/ForgotPasswordScreen";
+import ResetPasswordScreen     from "../screens/auth/ResetPasswordScreen";
+import DashboardScreen         from "../screens/dashboard/DashboardScreen";
+import RecipesListScreen       from "../screens/recipes/RecipesListScreen";
+import RecipeDetailsScreen     from "../screens/recipes/RecipeDetailsScreen";
+import CreateRecipeScreen      from "../screens/recipes/CreateRecipeScreen";
+import EditRecipeScreen        from "../screens/recipes/EditRecipeScreen";
 import SuggestByIngredientsScreen from "../screens/recipes/SuggestByIngredientsScreen";
-import HistoryScreen from "../screens/history/HistoryScreen";
-
-import PlannerScreen from "../screens/planner/PlannerScreen";
-
-import ShoppingListsScreen from "../screens/shopping/ShoppingListsScreen";
-import ShoppingListScreen from "../screens/shopping/ShoppingListScreen";
-
-import ProfileScreen from "../screens/profile/ProfileScreen";
-import PersonalDataScreen from "../screens/profile/PersonalDataScreen";
-import FoodPreferencesScreen from "../screens/profile/FoodPreferencesScreen";
-import NotificationsScreen from "../screens/profile/NotificationsScreen";
+import HistoryScreen           from "../screens/history/HistoryScreen";
+import PlannerScreen           from "../screens/planner/PlannerScreen";
+import ShoppingListsScreen     from "../screens/shopping/ShoppingListsScreen";
+import ShoppingListScreen      from "../screens/shopping/ShoppingListScreen";
+import ProfileScreen           from "../screens/profile/ProfileScreen";
+import PersonalDataScreen      from "../screens/profile/PersonalDataScreen";
+import FoodPreferencesScreen   from "../screens/profile/FoodPreferencesScreen";
+import NotificationsScreen     from "../screens/profile/NotificationsScreen";
+import HelpSupportScreen       from "../screens/profile/HelpSupportScreen";
 
 import {
   AuthStackParamList,
@@ -73,8 +69,8 @@ function RecipesTabStack() {
   return (
     <RecipesStack.Navigator screenOptions={defaultScreenOptions}>
       <RecipesStack.Screen name="RecipesList"          component={RecipesListScreen}          options={{ headerShown: false }} />
-      <RecipesStack.Screen name="RecipeDetails"        component={RecipeDetailsScreen}        options={{ title: "Detalhes" }} />
-      <RecipesStack.Screen name="CreateRecipe"         component={CreateRecipeScreen}         options={{ title: "Nova receita" }} />
+      <RecipesStack.Screen name="RecipeDetails"        component={RecipeDetailsScreen}        options={{ headerShown: false }} />
+      <RecipesStack.Screen name="CreateRecipe"         component={CreateRecipeScreen}         options={{ headerShown: false }} />
       <RecipesStack.Screen name="EditRecipe"           component={EditRecipeScreen}           options={{ title: "Editar receita" }} />
       <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ title: "O que tenho em casa?" }} />
       <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ title: "Histórico de preparo" }} />
@@ -94,7 +90,7 @@ function ShoppingTabStack() {
   return (
     <ShoppingStack.Navigator screenOptions={defaultScreenOptions}>
       <ShoppingStack.Screen name="ShoppingLists" component={ShoppingListsScreen} options={{ headerShown: false }} />
-      <ShoppingStack.Screen name="ShoppingList"  component={ShoppingListScreen}  options={{ title: "Lista de compras" }} />
+      <ShoppingStack.Screen name="ShoppingList"  component={ShoppingListScreen}  options={{ headerShown: false }} />
     </ShoppingStack.Navigator>
   );
 }
@@ -102,10 +98,11 @@ function ShoppingTabStack() {
 function ProfileTabStack() {
   return (
     <ProfileStack.Navigator screenOptions={defaultScreenOptions}>
-      <ProfileStack.Screen name="Profile"               component={ProfileScreen}        options={{ headerShown: false }} />
-      <ProfileStack.Screen name="PersonalData"          component={PersonalDataScreen}   options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Profile"               component={ProfileScreen}         options={{ headerShown: false }} />
+      <ProfileStack.Screen name="PersonalData"          component={PersonalDataScreen}    options={{ headerShown: false }} />
       <ProfileStack.Screen name="FoodPreferences"       component={FoodPreferencesScreen} options={{ headerShown: false }} />
-      <ProfileStack.Screen name="NotificationsSettings" component={NotificationsScreen}  options={{ headerShown: false }} />
+      <ProfileStack.Screen name="NotificationsSettings" component={NotificationsScreen}   options={{ headerShown: false }} />
+      <ProfileStack.Screen name="HelpSupport"           component={HelpSupportScreen}     options={{ headerShown: false }} />
     </ProfileStack.Navigator>
   );
 }
@@ -156,9 +153,9 @@ function AuthNavigator() {
 const ONBOARDING_KEY = (id: string | number) => `@comprinhas:onboardingDone:${id}`;
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, isLoading, user } = useSelector((s: RootState) => s.auth);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding,    setShowOnboarding]    = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {

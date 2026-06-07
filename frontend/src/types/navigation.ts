@@ -32,6 +32,7 @@ export type ProfileStackParamList = {
   PersonalData: undefined;
   FoodPreferences: undefined;
   NotificationsSettings: undefined;
+  HelpSupport: undefined;
 };
 
 export type TabParamList = {

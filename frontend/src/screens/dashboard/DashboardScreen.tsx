@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,17 +22,17 @@ import { colors } from "../../theme/colors";
 export default function DashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
 
-  const user = useSelector((state: RootState) => state.auth.user);
-  const recipes = useSelector((state: RootState) => state.recipes.recipes);
-  const plannedMeals = useSelector((state: RootState) => state.planner.plannedMeals);
-  const shoppingLists = useSelector((state: RootState) => state.shoppingList.lists);
+  const user          = useSelector((s: RootState) => s.auth.user);
+  const recipes       = useSelector((s: RootState) => s.recipes.recipes);
+  const plannedMeals  = useSelector((s: RootState) => s.planner.plannedMeals);
+  const userId        = String(user?.id ?? "");
+  const shoppingLists = useSelector((s: RootState) => s.shoppingList.listsByUser[userId] ?? []);
 
-  const recipesCount = recipes.length;
-  const favoritesCount = recipes.filter((r) => r.isFavorite).length;
-  const plannedMealsCount = plannedMeals.length;
+  const recipesCount       = recipes.length;
+  const favoritesCount     = recipes.filter((r) => r.isFavorite).length;
+  const plannedMealsCount  = plannedMeals.length;
   const shoppingItemsCount = shoppingLists.reduce(
-    (acc, list) => acc + list.items.filter((i) => !i.checked).length,
-    0
+    (acc, list) => acc + list.items.filter((i) => !i.checked).length, 0
   );
 
   const loadRecipes = useCallback(async () => {
@@ -49,52 +50,23 @@ export default function DashboardScreen({ navigation }: any) {
     }
   }, [dispatch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadRecipes();
-    }, [loadRecipes])
-  );
+  useFocusEffect(useCallback(() => { loadRecipes(); }, [loadRecipes]));
 
   function firstName(name?: string | null) {
     return name?.split(" ")[0] ?? "usuário";
   }
 
   const quickActions = [
-    {
-      icon: "add-circle-outline" as const,
-      label: "Nova receita",
-      color: colors.primary,
-      bg: colors.primaryLight,
-      onPress: () => navigation.navigate("RecipesTab", { screen: "CreateRecipe" }),
-    },
-    {
-      icon: "search-outline" as const,
-      label: "O que tenho?",
-      color: "#3B82F6",
-      bg: "#DBEAFE",
-      onPress: () => navigation.navigate("RecipesTab", { screen: "SuggestByIngredients" }),
-    },
-    {
-      icon: "time-outline" as const,
-      label: "Histórico",
-      color: "#F59E0B",
-      bg: "#FEF3C7",
-      onPress: () => navigation.navigate("RecipesTab", { screen: "History" }),
-    },
-    {
-      icon: "cart-outline" as const,
-      label: "Compras",
-      color: "#8B5CF6",
-      bg: "#EDE9FE",
-      onPress: () => navigation.navigate("ShoppingTab"),
-    },
+    { icon: "add-circle-outline" as const, label: "Nova receita", color: colors.primary, bg: colors.primaryLight, onPress: () => navigation.navigate("RecipesTab", { screen: "CreateRecipe" }) },
+    { icon: "search-outline"     as const, label: "O que tenho?", color: "#3B82F6",       bg: "#DBEAFE",           onPress: () => navigation.navigate("RecipesTab", { screen: "SuggestByIngredients" }) },
+    { icon: "time-outline"       as const, label: "Histórico",    color: "#F59E0B",       bg: "#FEF3C7",           onPress: () => navigation.navigate("RecipesTab", { screen: "History" }) },
+    { icon: "cart-outline"       as const, label: "Compras",      color: "#8B5CF6",       bg: "#EDE9FE",           onPress: () => navigation.navigate("ShoppingTab") },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Olá, {firstName(user?.name)} 👋</Text>
@@ -126,18 +98,14 @@ export default function DashboardScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>Acesso Rápido</Text>
         <View style={styles.quickGrid}>
           {quickActions.map((action) => (
-            <Pressable
-              key={action.label}
-              style={[styles.quickCard, { backgroundColor: action.bg }]}
-              onPress={action.onPress}
-            >
+            <Pressable key={action.label} style={[styles.quickCard, { backgroundColor: action.bg }]} onPress={action.onPress}>
               <Ionicons name={action.icon} size={28} color={action.color} />
               <Text style={[styles.quickLabel, { color: action.color }]}>{action.label}</Text>
             </Pressable>
           ))}
         </View>
 
-        {/* Planejamento semanal */}
+        {/* Plano Semanal */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Plano Semanal</Text>
           <Pressable onPress={() => navigation.navigate("PlannerTab")}>
@@ -146,10 +114,7 @@ export default function DashboardScreen({ navigation }: any) {
         </View>
 
         {plannedMeals.length === 0 ? (
-          <Pressable
-            style={styles.emptyPlanCard}
-            onPress={() => navigation.navigate("PlannerTab")}
-          >
+          <Pressable style={styles.emptyPlanCard} onPress={() => navigation.navigate("PlannerTab")}>
             <Ionicons name="calendar-outline" size={32} color={colors.primary} />
             <Text style={styles.emptyPlanTitle}>Nenhuma refeição planejada</Text>
             <Text style={styles.emptyPlanSub}>Toque para organizar sua semana</Text>
@@ -165,7 +130,7 @@ export default function DashboardScreen({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* Receitas recentes */}
+        {/* Receitas Recentes */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Receitas Recentes</Text>
           <Pressable onPress={() => navigation.navigate("RecipesTab")}>
@@ -189,9 +154,19 @@ export default function DashboardScreen({ navigation }: any) {
               style={styles.recipeRow}
               onPress={() => navigation.navigate("RecipesTab", { screen: "RecipeDetails", params: { recipeId: recipe.id } })}
             >
+              {/* Ícone ou imagem real */}
               <View style={styles.recipeRowIcon}>
-                <Ionicons name="restaurant" size={20} color={colors.primary} />
+                {recipe.imageUrl ? (
+                  <Image
+                    source={{ uri: recipe.imageUrl }}
+                    style={styles.recipeRowImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Ionicons name="restaurant" size={20} color={colors.primary} />
+                )}
               </View>
+
               <View style={styles.recipeRowInfo}>
                 <Text style={styles.recipeRowTitle} numberOfLines={1}>{recipe.title}</Text>
                 <Text style={styles.recipeRowMeta}>{recipe.prepTimeMinutes} min · {recipe.category}</Text>
@@ -223,59 +198,26 @@ const styles = StyleSheet.create({
   quickCard: { width: "47%", borderRadius: 16, padding: 16, alignItems: "center", gap: 8 },
   quickLabel: { fontSize: 13, fontWeight: "700" },
   planRow: { marginBottom: 28 },
-  planChip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginRight: 10,
-    alignItems: "center",
-    minWidth: 72,
-  },
+  planChip: { backgroundColor: colors.primaryLight, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginRight: 10, alignItems: "center", minWidth: 72 },
   planChipDay: { fontSize: 12, fontWeight: "700", color: colors.primaryDark, marginBottom: 2 },
   planChipType: { fontSize: 11, color: colors.primaryDark, maxWidth: 64, textAlign: "center" },
-  emptyPlanCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: "dashed",
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 28,
-    gap: 8,
-  },
-  emptyRecipeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: "dashed",
-    padding: 24,
-    alignItems: "center",
-    gap: 8,
-  },
+  emptyPlanCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", marginBottom: 28, gap: 8 },
+  emptyRecipeCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", gap: 8 },
   emptyPlanTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
   emptyPlanSub: { fontSize: 13, color: colors.textSecondary },
-  recipeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  recipeRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   recipeRowIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    overflow: "hidden",
   },
+  // Imagem ocupa todo o ícone quando disponível
+  recipeRowImage: { width: 44, height: 44 },
   recipeRowInfo: { flex: 1 },
   recipeRowTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
   recipeRowMeta: { fontSize: 12, color: colors.textSecondary },

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,38 +26,32 @@ const CATEGORIES = ["Todas", "Favoritas", "Café da manhã", "Almoço", "Lanche"
 
 export default function RecipesListScreen({ navigation }: any) {
   const dispatch = useDispatch();
-  const recipes = useSelector((state: RootState) => state.recipes.recipes);
+  const recipes  = useSelector((state: RootState) => state.recipes.recipes);
 
-  const [search, setSearch] = useState("");
+  const [search,           setSearch]           = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
 
   const loadRecipes = useCallback(async () => {
     try {
       const auth = await getAuth();
-      console.log("AUTH:", auth?.accessToken ? "tem token" : "SEM TOKEN");
       if (!auth) return;
       const response = await fetch(`${API_URL}/recipes`, {
         headers: { Authorization: `Bearer ${auth.accessToken}` },
       });
       const data = await response.json();
-      console.log("RECIPES RESPONSE:", response.status, data?.length ?? data);
       if (!response.ok) throw new Error(data.message || "Erro ao carregar receitas");
       dispatch(setRecipes(data.map(normalizeRecipe)));
     } catch (error) {
-      console.log("ERRO loadRecipes:", error);
+      console.log("Erro ao carregar receitas:", error);
       Alert.alert("Erro", "Erro ao carregar receitas");
     }
   }, [dispatch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadRecipes();
-    }, [loadRecipes])
-  );
+  useFocusEffect(useCallback(() => { loadRecipes(); }, [loadRecipes]));
 
   const filtered = useMemo(() => {
     return recipes.filter((r) => {
-      const matchSearch = r.title.toLowerCase().includes(search.toLowerCase());
+      const matchSearch   = r.title.toLowerCase().includes(search.toLowerCase());
       const matchCategory =
         selectedCategory === "Todas" ||
         (selectedCategory === "Favoritas" && r.isFavorite) ||
@@ -133,7 +128,7 @@ export default function RecipesListScreen({ navigation }: any) {
         )}
       </View>
 
-      {/* Filtros — ScrollView horizontal simples sem FlatList */}
+      {/* Filtros */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -184,9 +179,17 @@ export default function RecipesListScreen({ navigation }: any) {
             style={styles.card}
             onPress={() => navigation.navigate("RecipeDetails", { recipeId: item.id })}
           >
-            {/* Placeholder de imagem */}
+            {/* Imagem real ou placeholder */}
             <View style={styles.cardImage}>
-              <Ionicons name="restaurant" size={28} color={colors.primary} />
+              {item.imageUrl ? (
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.cardImageReal}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Ionicons name="restaurant" size={28} color={colors.primary} />
+              )}
             </View>
 
             <View style={styles.cardContent}>
@@ -229,148 +232,55 @@ export default function RecipesListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    marginHorizontal: 20,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },
-
-  // Filtros — chave do fix: remover flex e usar width automático
   filtersScroll: { flexGrow: 0, marginBottom: 8 },
-  filtersContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 4,
-    gap: 8,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  chip: {
-    // sem flex: deixa o chip ter o tamanho exato do texto
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: "flex-start", // impede stretching vertical
-  },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    // sem textAlign center — desnecessário para inline
-  },
+  filtersContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 8, flexDirection: "row", alignItems: "center" },
+  chip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignSelf: "flex-start" },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
   chipTextActive: { color: "#fff" },
-
-  counter: {
-    fontSize: 13,
-    color: colors.textMuted,
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-
+  counter: { fontSize: 13, color: colors.textMuted, paddingHorizontal: 20, marginBottom: 8 },
   listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-
   card: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  flexDirection: "row",
+  backgroundColor: colors.surface,
+  borderRadius: 16,
+  marginBottom: 12,
+  overflow: "hidden",
+  borderWidth: 1,
+  borderColor: colors.border,
+  minHeight: 110,
+},
+
+  // Imagem do card — largura fixa, altura 100% automática
   cardImage: {
-    width: 80,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  width: 90,
+  height: 120,
+  backgroundColor: colors.primaryLight,
+  alignItems: "center",
+  justifyContent: "center",
+},
+  cardImageReal: {
+  width: 90,
+  height: 120,
+},
+
   cardContent: { flex: 1, padding: 12 },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 6,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginRight: 8,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.primaryLight,
-    borderRadius: 999,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    marginBottom: 6,
-  },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
+  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginRight: 8 },
+  badge: { alignSelf: "flex-start", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, marginBottom: 6 },
   badgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
-  cardMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 8,
-  },
+  cardMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
   cardMetaText: { fontSize: 12, color: colors.textMuted },
   dot: { fontSize: 12, color: colors.textMuted },
   cardFooter: { flexDirection: "row", justifyContent: "flex-end" },
-  deleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: "#FEE2E2",
-  },
+  deleteBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "#FEE2E2" },
   deleteBtnText: { fontSize: 12, color: colors.danger, fontWeight: "600" },
-
-  emptyWrapper: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 8,
-  },
+  emptyWrapper: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  emptyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-    paddingHorizontal: 20,
-  },
+  emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 20 },
 });
