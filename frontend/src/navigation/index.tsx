@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+
+// RF14 — ref global para navegação via deep link
+export const navigationRef = createNavigationContainerRef();
 
 import OnboardingScreen        from "../screens/onboarding/OnboardingScreen";
 import LoginScreen             from "../screens/auth/LoginScreen";
@@ -131,7 +134,17 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="HomeTab"     component={HomeTabStack}     options={{ title: "Início" }} />
-      <Tab.Screen name="RecipesTab"  component={RecipesTabStack}  options={{ title: "Receitas" }} />
+      <Tab.Screen
+        name="RecipesTab"
+        component={RecipesTabStack}
+        options={{ title: "Receitas" }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            (navigation as any).navigate("RecipesTab", { screen: "RecipesList" });
+          },
+        })}
+      />
       <Tab.Screen name="PlannerTab"  component={PlannerTabStack}  options={{ title: "Planejar" }} />
       <Tab.Screen name="ShoppingTab" component={ShoppingTabStack} options={{ title: "Compras" }} />
       <Tab.Screen name="ProfileTab"  component={ProfileTabStack}  options={{ title: "Perfil" }} />
@@ -187,7 +200,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {isAuthenticated ? <MainTabs /> : <AuthNavigator />}
     </NavigationContainer>
   );

@@ -111,6 +111,31 @@ const shoppingListSlice = createSlice({
       const list = getUserLists(state, userId).find((l) => l.id === listId);
       if (list) { list.items = []; syncItems(state, userId); }
     },
+
+    addCustomCategory: (
+      state,
+      action: PayloadAction<{ listId: string; userId: string; name: string }>
+    ) => {
+      const { listId, userId, name } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (!list) return;
+      if (!list.customCategories) list.customCategories = [];
+      if (!list.customCategories.includes(name)) list.customCategories.push(name);
+    },
+
+    removeCustomCategory: (
+      state,
+      action: PayloadAction<{ listId: string; userId: string; name: string }>
+    ) => {
+      const { listId, userId, name } = action.payload;
+      const list = getUserLists(state, userId).find((l) => l.id === listId);
+      if (!list) return;
+      list.customCategories = (list.customCategories ?? []).filter((c) => c !== name);
+      list.items.forEach((item) => {
+        if (item.category === name) item.category = "Outros";
+      });
+      syncItems(state, userId);
+    },
   },
 });
 
@@ -124,6 +149,8 @@ export const {
   toggleShoppingListItem,
   updateShoppingListItem,
   clearShoppingList,
+  addCustomCategory,
+  removeCustomCategory,
 } = shoppingListSlice.actions;
 
 export default shoppingListSlice.reducer;

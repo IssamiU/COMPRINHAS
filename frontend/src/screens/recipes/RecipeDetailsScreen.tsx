@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -245,6 +246,15 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     finally { setMarkingPrepared(false); }
   }
 
+  // RF14 — compartilhar receita via deep link
+  async function handleShare() {
+    const link = `mealsync://recipe/${recipeId}`;
+    await Share.share({
+      message: `Confira essa receita no MealSync: ${recipe?.title ?? ""}\n${link}`,
+      url: link,
+    });
+  }
+
   async function handleDuplicate() {
     Alert.alert("Duplicar receita", "Uma cópia será criada e aberta para edição.", [
       { text: "Cancelar", style: "cancel" },
@@ -368,6 +378,10 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               </Pressable>
               <Pressable style={styles.iconCircleSmall} onPress={handleDuplicate} disabled={duplicating}>
                 <Feather name="copy" size={15} color="#fff" />
+              </Pressable>
+              {/* RF14 — compartilhar via deep link */}
+              <Pressable style={styles.iconCircleSmall} onPress={handleShare} accessibilityLabel="Compartilhar receita" accessibilityRole="button">
+                <Feather name="share" size={15} color="#fff" />
               </Pressable>
               <Pressable style={styles.iconCircle} onPress={toggleFavorite}>
                 <Ionicons name={recipe.isFavorite ? "heart" : "heart-outline"} size={20} color={recipe.isFavorite ? "#FCA5A5" : "#fff"} />

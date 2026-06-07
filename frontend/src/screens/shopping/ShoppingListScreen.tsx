@@ -1,23 +1,31 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 import { RootState } from "../../store";
 import {
+  addCustomCategory,
   addShoppingListItem,
   clearShoppingList,
+  removeCustomCategory,
   removeShoppingListItem,
   setShoppingList,
   toggleShoppingListItem,
@@ -82,20 +90,49 @@ function ShoppingListContent({
   const [fCategory,      setFCategory]      = useState("Outros");
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [catPickerOpen,  setCatPickerOpen]  = useState(false);
+  const [addingNewCat,   setAddingNewCat]   = useState(false);
+  const [newCatName,     setNewCatName]     = useState("");
+  const newCatRef = useRef<TextInput>(null);
+  const qtyRef = useRef<TextInput>(null);
 
   const items = list.items;
+
+  const allCategories = useMemo(() => [
+    ...CATEGORIES,
+    ...(list.customCategories ?? []).map((key) => ({ key, emoji: "🏷️", custom: true })),
+  ], [list.customCategories]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, ShoppingListItem[]>();
     items.forEach((it) => {
-      const k = (it as any).category ?? "Outros";
+      const k = it.category ?? "Outros";
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(it);
     });
-    return CATEGORIES
+    return allCategories
       .map((c) => ({ ...c, items: map.get(c.key) ?? [] }))
       .filter((c) => c.items.length > 0);
-  }, [items]);
+  }, [items, allCategories]);
+
+  function handleConfirmNewCat() {
+    const name = newCatName.trim();
+    if (!name) return;
+    dispatch(addCustomCategory({ listId, userId, name }));
+    setFCategory(name);
+    setNewCatName("");
+    setAddingNewCat(false);
+    setCatPickerOpen(false);
+  }
+
+  function handleRemoveCat(name: string) {
+    Alert.alert("Remover categoria", `Remover "${name}"? Os itens voltam para Outros.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Remover", style: "destructive", onPress: () => {
+        dispatch(removeCustomCategory({ listId, userId, name }));
+        if (fCategory === name) setFCategory("Outros");
+      }},
+    ]);
+  }
 
   const total    = items.length;
   const checked  = items.filter((i) => i.checked).length;
@@ -113,7 +150,7 @@ function ShoppingListContent({
     setFName(item.name);
     setFQty(String(item.quantity));
     setFUnit(item.unit);
-    setFCategory((item as any).category ?? "Outros");
+    setFCategory(item.category ?? "Outros");
     setAddOpen(true);
   }
 
@@ -125,12 +162,12 @@ function ShoppingListContent({
     if (editingItem) {
       dispatch(updateShoppingListItem({
         listId, userId,
-        item: { id: editingItem.id, name: fName.trim(), quantity: qty, unit: fUnit, checked: editingItem.checked },
+        item: { id: editingItem.id, name: fName.trim(), quantity: qty, unit: fUnit, checked: editingItem.checked, category: fCategory },
       }));
     } else {
       dispatch(addShoppingListItem({
         listId, userId,
-        item: { id: Date.now().toString(), name: fName.trim(), quantity: qty, unit: fUnit, checked: false },
+        item: { id: Date.now().toString(), name: fName.trim(), quantity: qty, unit: fUnit, checked: false, category: fCategory },
       }));
     }
     resetForm(); setAddOpen(false);
@@ -166,24 +203,81 @@ function ShoppingListContent({
   }
 
   async function handleShare() {
-    const txt = `🛒 ${list.name}\n\n` +
+    const dateStr = new Date().toLocaleDateString("pt-BR");
+    const txt = `🛒 ${list.name}\n${dateStr} · ${checked} de ${total} itens\n\n` +
       grouped.map((g) =>
         `${g.emoji} ${g.key}\n` +
-        g.items.map((it) => `  ${it.checked ? "✅" : "⬜"} ${it.name} — ${it.quantity} ${it.unit}`).join("\n")
+        g.items.map((it) => `  ${it.checked ? "[x]" : "[ ]"} ${it.name} — ${it.quantity} ${it.unit}`).join("\n")
       ).join("\n\n");
     try { await Share.share({ message: txt }); } catch {}
+  }
+
+  // RF24 — Exportar lista de compras para PDF
+  async function handleExportPDF() {
+    if (items.length === 0) {
+      Alert.alert("Atenção", "A lista está vazia.");
+      return;
+    }
+    const dateStr = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const groupsHtml = grouped.map((g) => `
+      <div class="group">
+        <div class="group-title">${g.emoji} ${g.key}</div>
+        ${g.items.map((it) => `
+          <div class="item ${it.checked ? "checked" : ""}">
+            <span>${it.checked ? "✅" : "⬜"} ${it.name}</span>
+            <span class="qty">${it.quantity} ${it.unit}</span>
+          </div>`).join("")}
+      </div>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <style>
+        body{font-family:Arial,sans-serif;padding:32px;color:#111827;max-width:600px;margin:0 auto}
+        h1{color:#22C55E;font-size:22px;margin-bottom:4px}
+        .sub{color:#6B7280;font-size:12px;margin-bottom:6px}
+        .prog{color:#6B7280;font-size:13px;margin-bottom:24px;padding:8px 12px;background:#F0FDF4;border-radius:8px;display:inline-block}
+        .group{margin-bottom:20px}
+        .group-title{font-size:14px;font-weight:bold;color:#16A34A;border-bottom:2px solid #DCFCE7;padding-bottom:6px;margin-bottom:8px}
+        .item{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6;font-size:13px}
+        .item.checked{color:#111827}
+        .qty{color:#6B7280;white-space:nowrap;margin-left:12px}
+      </style></head><body>
+      <h1>🛒 ${list.name}</h1>
+      <p class="sub">Gerado em ${dateStr}</p>
+      <p class="prog">${checked} de ${total} itens concluídos</p>
+      ${groupsHtml}
+    </body></html>`;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `Lista: ${list.name}`,
+        UTI: "com.adobe.pdf",
+      });
+    } catch {
+      Alert.alert("Erro", "Não foi possível gerar o PDF.");
+    }
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()}>
+        <Pressable
+          style={styles.iconBtn}
+          onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("ShoppingLists")}
+          hitSlop={12}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{list.name}</Text>
-        <Pressable style={styles.iconBtn} onPress={handleShare}>
-          <Ionicons name="share-outline" size={22} color={colors.textPrimary} />
-        </Pressable>
+        <View style={{ flexDirection: "row" }}>
+          <Pressable style={styles.iconBtn} onPress={handleExportPDF}>
+            <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={handleShare}>
+            <Ionicons name="share-outline" size={22} color={colors.textPrimary} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.progressCard}>
@@ -262,75 +356,138 @@ function ShoppingListContent({
         </Pressable>
       </View>
 
-      {/* Modal adicionar/editar */}
+      {/* Modal adicionar/editar — pickers inline (iOS não suporta dois Modals abertos) */}
       <Modal visible={addOpen} transparent animationType="slide" onRequestClose={() => { resetForm(); setAddOpen(false); }}>
-        <Pressable style={styles.backdrop} onPress={() => { resetForm(); setAddOpen(false); }} />
-        <View style={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>{editingItem ? "Editar item" : "Adicionar item"}</Text>
-          <Text style={styles.fieldLabel}>Nome</Text>
-          <TextInput style={styles.input} placeholder="Ex.: Maçã" placeholderTextColor={colors.textMuted} value={fName} onChangeText={setFName} autoFocus returnKeyType="next" />
-          <View style={styles.rowGap}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Quantidade</Text>
-              <TextInput style={styles.input} placeholder="0" placeholderTextColor={colors.textMuted} keyboardType="numeric" value={fQty} onChangeText={setFQty} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Unidade</Text>
-              <Pressable style={[styles.input, styles.pickerBtn]} onPress={() => setUnitPickerOpen(true)}>
-                <Text style={styles.pickerBtnText} numberOfLines={1}>{fUnit}</Text>
-                <Ionicons name="chevron-down" size={15} color={colors.textMuted} />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <Pressable style={styles.backdrop} onPress={() => { Keyboard.dismiss(); resetForm(); setAddOpen(false); }} />
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>{editingItem ? "Editar item" : "Adicionar item"}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={styles.fieldLabel}>Nome</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex.: Maçã"
+                placeholderTextColor={colors.textMuted}
+                value={fName}
+                onChangeText={setFName}
+                autoFocus
+                returnKeyType="next"
+                onSubmitEditing={() => qtyRef.current?.focus()}
+                submitBehavior="submit"
+              />
+              <View style={styles.rowGap}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Quantidade</Text>
+                  <TextInput
+                    ref={qtyRef}
+                    style={styles.input}
+                    placeholder="0"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={fQty}
+                    onChangeText={setFQty}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Unidade</Text>
+                  <Pressable
+                    style={[styles.input, styles.pickerBtn, unitPickerOpen && { borderColor: colors.primary }]}
+                    onPress={() => { setUnitPickerOpen(o => !o); setCatPickerOpen(false); Keyboard.dismiss(); }}
+                  >
+                    <Text style={styles.pickerBtnText} numberOfLines={1}>{fUnit}</Text>
+                    <Ionicons name={unitPickerOpen ? "chevron-up" : "chevron-down"} size={15} color={colors.textMuted} />
+                  </Pressable>
+                  {unitPickerOpen && (
+                    <ScrollView style={styles.inlineList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                      {UNITS.map((u) => (
+                        <Pressable key={u} style={styles.inlineItem} onPress={() => { setFUnit(u); setUnitPickerOpen(false); }}>
+                          <Text style={[styles.inlineItemText, fUnit === u && { color: colors.primary, fontWeight: "700" }]}>{u}</Text>
+                          {fUnit === u && <Ionicons name="checkmark" size={14} color={colors.primary} />}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+              </View>
+              <Text style={styles.fieldLabel}>Categoria</Text>
+              <Pressable
+                style={[styles.input, styles.pickerBtn, catPickerOpen && { borderColor: colors.primary }]}
+                onPress={() => { setCatPickerOpen(o => !o); setUnitPickerOpen(false); Keyboard.dismiss(); }}
+              >
+                <Text style={styles.pickerBtnText}>{fCategory}</Text>
+                <Ionicons name={catPickerOpen ? "chevron-up" : "chevron-down"} size={15} color={colors.textMuted} />
               </Pressable>
-            </View>
+              {catPickerOpen && (
+                <View style={[styles.inlineList, { maxHeight: 260 }]}>
+                  <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    {/* categorias padrão */}
+                    {CATEGORIES.map((c) => (
+                      <Pressable key={c.key} style={styles.inlineItem} onPress={() => { setFCategory(c.key); setCatPickerOpen(false); setAddingNewCat(false); }}>
+                        <Text style={[styles.inlineItemText, fCategory === c.key && { color: colors.primary, fontWeight: "700" }]}>{c.emoji}  {c.key}</Text>
+                        {fCategory === c.key && <Ionicons name="checkmark" size={14} color={colors.primary} />}
+                      </Pressable>
+                    ))}
+                    {/* categorias customizadas */}
+                    {(list.customCategories ?? []).length > 0 && (
+                      <View style={styles.catSeparator}>
+                        <Text style={styles.catSeparatorText}>Minhas categorias</Text>
+                      </View>
+                    )}
+                    {(list.customCategories ?? []).map((key) => (
+                      <View key={key} style={styles.inlineItem}>
+                        <Pressable style={{ flex: 1 }} onPress={() => { setFCategory(key); setCatPickerOpen(false); setAddingNewCat(false); }}>
+                          <Text style={[styles.inlineItemText, fCategory === key && { color: colors.primary, fontWeight: "700" }]}>🏷️  {key}</Text>
+                        </Pressable>
+                        {fCategory === key && <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginRight: 8 }} />}
+                        <Pressable hitSlop={8} onPress={() => handleRemoveCat(key)}>
+                          <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                        </Pressable>
+                      </View>
+                    ))}
+                    {/* criar nova categoria */}
+                    {!addingNewCat ? (
+                      <Pressable style={[styles.inlineItem, { justifyContent: "center" }]} onPress={() => { setAddingNewCat(true); setTimeout(() => newCatRef.current?.focus(), 80); }}>
+                        <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+                        <Text style={[styles.inlineItemText, { color: colors.primary, marginLeft: 6 }]}>Nova categoria</Text>
+                      </Pressable>
+                    ) : (
+                      <View style={[styles.inlineItem, { gap: 8 }]}>
+                        <TextInput
+                          ref={newCatRef}
+                          style={[styles.input, { flex: 1, minHeight: 36, paddingVertical: 6 }]}
+                          placeholder="Nome da categoria"
+                          placeholderTextColor={colors.textMuted}
+                          value={newCatName}
+                          onChangeText={setNewCatName}
+                          returnKeyType="done"
+                          onSubmitEditing={handleConfirmNewCat}
+                          submitBehavior="submit"
+                        />
+                        <Pressable style={styles.confirmBtn} onPress={handleConfirmNewCat}>
+                          <Text style={[styles.confirmBtnText, { paddingHorizontal: 12 }]}>OK</Text>
+                        </Pressable>
+                        <Pressable onPress={() => { setAddingNewCat(false); setNewCatName(""); }} hitSlop={8}>
+                          <Ionicons name="close" size={18} color={colors.textMuted} />
+                        </Pressable>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+              <View style={styles.modalActions}>
+                <Pressable style={styles.cancelBtn} onPress={() => { resetForm(); setAddOpen(false); }}>
+                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                </Pressable>
+                <Pressable style={styles.confirmBtn} onPress={handleSaveItem}>
+                  <Text style={styles.confirmBtnText}>{editingItem ? "Salvar" : "Adicionar"}</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
-          <Text style={styles.fieldLabel}>Categoria</Text>
-          <Pressable style={[styles.input, styles.pickerBtn]} onPress={() => setCatPickerOpen(true)}>
-            <Text style={styles.pickerBtnText}>{fCategory}</Text>
-            <Ionicons name="chevron-down" size={15} color={colors.textMuted} />
-          </Pressable>
-          <View style={styles.modalActions}>
-            <Pressable style={styles.cancelBtn} onPress={() => { resetForm(); setAddOpen(false); }}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
-            </Pressable>
-            <Pressable style={styles.confirmBtn} onPress={handleSaveItem}>
-              <Text style={styles.confirmBtnText}>{editingItem ? "Salvar" : "Adicionar"}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Picker unidade */}
-      <Modal visible={unitPickerOpen} transparent animationType="fade" onRequestClose={() => setUnitPickerOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setUnitPickerOpen(false)} />
-        <View style={[styles.sheet, { maxHeight: "60%" }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Selecionar unidade</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {UNITS.map((u) => (
-              <Pressable key={u} style={styles.pickerOption} onPress={() => { setFUnit(u); setUnitPickerOpen(false); }}>
-                <Text style={[styles.pickerOptionText, fUnit === u && { color: colors.primary, fontWeight: "700" }]}>{u}</Text>
-                {fUnit === u && <Ionicons name="checkmark" size={16} color={colors.primary} />}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Picker categoria */}
-      <Modal visible={catPickerOpen} transparent animationType="fade" onRequestClose={() => setCatPickerOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setCatPickerOpen(false)} />
-        <View style={[styles.sheet, { maxHeight: "60%" }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Selecionar categoria</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {CATEGORIES.map((c) => (
-              <Pressable key={c.key} style={styles.pickerOption} onPress={() => { setFCategory(c.key); setCatPickerOpen(false); }}>
-                <Text style={[styles.pickerOptionText, fCategory === c.key && { color: colors.primary, fontWeight: "700" }]}>{c.emoji}  {c.key}</Text>
-                {fCategory === c.key && <Ionicons name="checkmark" size={16} color={colors.primary} />}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -408,4 +565,9 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: colors.textSecondary, fontWeight: "700" },
   confirmBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   confirmBtnText: { color: "#fff", fontWeight: "700" },
+  inlineList: { maxHeight: 150, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginTop: 4, backgroundColor: colors.surface, overflow: "hidden" },
+  inlineItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  inlineItemText: { fontSize: 14, color: colors.textPrimary },
+  catSeparator: { paddingHorizontal: 14, paddingVertical: 6, backgroundColor: colors.borderLight },
+  catSeparatorText: { fontSize: 11, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 });
