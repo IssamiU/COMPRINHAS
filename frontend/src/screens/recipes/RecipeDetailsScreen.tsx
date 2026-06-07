@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   AppStateStatus,
@@ -128,6 +129,39 @@ function getTimersFromStore() {
 
 type TabKey = "ingredients" | "steps";
 
+// RF18 — unidades culinárias para conversão
+const VOLUME_UNITS = ["ml", "l", "xícara", "copo", "colher de sopa", "colher de chá"];
+const WEIGHT_UNITS = ["g", "kg", "oz"];
+
+function getCompatibleUnits(unit: string): string[] {
+  const u = unit.toLowerCase().trim();
+  if (VOLUME_UNITS.some((v) => v === u)) return VOLUME_UNITS.filter((v) => v !== u);
+  if (WEIGHT_UNITS.some((v) => v === u)) return WEIGHT_UNITS.filter((v) => v !== u);
+  return [];
+}
+
+// Unidades culinárias exibem frações; métricas exibem decimais
+const CULINARY_UNITS = ["xícara", "copo", "colher de sopa", "colher de chá"];
+
+function toFraction(value: number): string {
+  if (value <= 0) return "0";
+  // menor que 1/4 → inútil na prática, avisar em vez de mostrar 0
+  if (value < 0.125) return "< 1/4";
+  const quarters = Math.round(value * 4);
+  const whole    = Math.floor(quarters / 4);
+  const rem      = quarters % 4;
+  const fracMap: Record<number, string> = { 0: "", 1: "1/4", 2: "1/2", 3: "3/4" };
+  const frac = fracMap[rem];
+  if (whole === 0) return frac || "< 1/4";
+  if (!frac) return String(whole);
+  return `${whole} e ${frac}`;
+}
+
+function formatConverted(value: number, unit: string): string {
+  if (CULINARY_UNITS.includes(unit.toLowerCase().trim())) return toFraction(value);
+  return String(Math.round(value * 100) / 100);
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function RecipeDetailsScreen({ route, navigation }: any) {
   const { recipeId } = route.params;
@@ -144,6 +178,13 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [selectedMinutes, setSelectedMinutes] = useState(5);
   const [duplicating, setDuplicating] = useState(false);
   const [markingPrepared, setMarkingPrepared] = useState(false);
+
+  // RF18 — conversão de unidades
+  const [convertVisible, setConvertVisible]     = useState(false);
+  const [convertIngredient, setConvertIngredient] = useState<any>(null);
+  const [convertToUnit, setConvertToUnit]       = useState("");
+  const [convertResult, setConvertResult]       = useState<number | null>(null);
+  const [convertLoading, setConvertLoading]     = useState(false);
 
   const displayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedRef = useRef<Set<number>>(new Set());
@@ -271,6 +312,26 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         finally { setDuplicating(false); }
       }},
     ]);
+  }
+
+  // RF18 — busca conversão no backend proxy
+  async function handleConvert(toUnit: string) {
+    if (!convertIngredient || !recipe) return;
+    setConvertToUnit(toUnit);
+    setConvertLoading(true);
+    setConvertResult(null);
+    const scaledQty = scaleIngredient(convertIngredient.quantity, recipe.servings, targetServings);
+    try {
+      const res = await fetch(
+        `${API_URL}/proxy/convert?value=${encodeURIComponent(scaledQty)}&from=${encodeURIComponent(convertIngredient.unit)}&to=${encodeURIComponent(toUnit)}`
+      );
+      const json = await res.json();
+      setConvertResult(json.result ?? null);
+    } catch {
+      setConvertResult(null);
+    } finally {
+      setConvertLoading(false);
+    }
   }
 
   function openTimerModal(stepIndex: number) {
@@ -456,6 +517,23 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   </Text>
                 </View>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                {/* RF18 — botão de conversão visível apenas para unidades suportadas */}
+                {getCompatibleUnits(ingredient.unit).length > 0 && (
+                  <Pressable
+                    style={styles.convertBtn}
+                    hitSlop={10}
+                    onPress={() => {
+                      setConvertIngredient(ingredient);
+                      setConvertToUnit("");
+                      setConvertResult(null);
+                      setConvertVisible(true);
+                    }}
+                    accessibilityLabel="Converter unidade"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="swap-horizontal-outline" size={17} color={colors.textMuted} />
+                  </Pressable>
+                )}
               </View>
             ))}
           </View>
@@ -545,6 +623,53 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
           <Ionicons name="time" size={22} color="#fff" />
         </Pressable>
       </View>
+
+      {/* RF18 — Modal de conversão de unidade */}
+      <Modal visible={convertVisible} transparent animationType="slide" onRequestClose={() => setConvertVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setConvertVisible(false)} />
+        <View style={styles.modalCard}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Converter unidade</Text>
+          {convertIngredient && (
+            <>
+              <Text style={styles.modalSub}>{convertIngredient.name}</Text>
+              <View style={styles.convertCurrentRow}>
+                <Text style={styles.convertCurrentLabel}>Valor atual</Text>
+                <Text style={styles.convertCurrentValue}>
+                  {scaleIngredient(convertIngredient.quantity, recipe.servings, targetServings)}{" "}
+                  {convertIngredient.unit}
+                </Text>
+              </View>
+              <Text style={styles.convertPickerLabel}>Converter para:</Text>
+              <View style={styles.convertPills}>
+                {getCompatibleUnits(convertIngredient.unit).map((unit) => (
+                  <Pressable
+                    key={unit}
+                    style={[styles.convertPill, convertToUnit === unit && styles.convertPillActive]}
+                    onPress={() => handleConvert(unit)}
+                  >
+                    <Text style={[styles.convertPillText, convertToUnit === unit && styles.convertPillTextActive]}>
+                      {unit}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.convertResultBox}>
+                {convertLoading ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : convertResult !== null && convertToUnit ? (
+                  <>
+                    <Text style={styles.convertResultLabel}>Equivale a</Text>
+                    <Text style={styles.convertResultValue}>{formatConverted(convertResult, convertToUnit)} {convertToUnit}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.convertResultHint}>Toque em uma unidade acima</Text>
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      </Modal>
 
       {/* Modal timer */}
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
@@ -682,4 +807,20 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
   modalConfirm: { flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
   modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+
+  // RF18 — conversão de unidades
+  convertBtn: { paddingHorizontal: 2, paddingVertical: 4 },
+  convertCurrentRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surfaceAlt, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16, width: "100%" },
+  convertCurrentLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  convertCurrentValue: { fontSize: 15, color: colors.textPrimary, fontWeight: "700" },
+  convertPickerLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600", alignSelf: "flex-start", marginBottom: 10 },
+  convertPills: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
+  convertPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  convertPillActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  convertPillText: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  convertPillTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  convertResultBox: { width: "100%", minHeight: 60, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceAlt, borderRadius: 12, marginBottom: 20, paddingVertical: 14 },
+  convertResultLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", marginBottom: 2 },
+  convertResultValue: { fontSize: 24, color: colors.primary, fontWeight: "700" },
+  convertResultHint: { fontSize: 13, color: colors.textMuted },
 });

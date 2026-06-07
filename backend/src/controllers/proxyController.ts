@@ -81,3 +81,64 @@ export function barcodeProxy(req: Request, res: Response): void {
 
   request.on("error", () => res.json({ name: "", category: "Outros" }));
 }
+
+// RF18 — Tabela de conversão culinária (ml = base de volume, g = base de peso)
+const VOLUME_ML: Record<string, number> = {
+  ml: 1,
+  l: 1000,
+  litro: 1000,
+  litros: 1000,
+  "xcara": 240,
+  "xícara": 240,
+  copo: 200,
+  "colher de sopa": 15,
+  "colher de cha": 5,
+  "colher de chá": 5,
+};
+
+const WEIGHT_G: Record<string, number> = {
+  g: 1,
+  grama: 1,
+  gramas: 1,
+  kg: 1000,
+  quilograma: 1000,
+  quilogramas: 1000,
+  oz: 28.35,
+  lb: 453.59,
+  libra: 453.59,
+};
+
+// RF18 — GET /proxy/convert?value=&from=&to=
+export function convertProxy(req: Request, res: Response): void {
+  const { value, from, to } = req.query as { value?: string; from?: string; to?: string };
+
+  if (!value || !from || !to) {
+    res.status(400).json({ error: "Parâmetros obrigatórios: value, from, to" });
+    return;
+  }
+
+  const num = parseFloat(value);
+  if (isNaN(num)) {
+    res.status(400).json({ error: "Valor inválido" });
+    return;
+  }
+
+  const fromKey = from.toLowerCase().trim();
+  const toKey   = to.toLowerCase().trim();
+
+  if (VOLUME_ML[fromKey] !== undefined && VOLUME_ML[toKey] !== undefined) {
+    const ml     = num * VOLUME_ML[fromKey];
+    const result = Math.round((ml / VOLUME_ML[toKey]) * 100) / 100;
+    res.json({ result, from, to, original: num });
+    return;
+  }
+
+  if (WEIGHT_G[fromKey] !== undefined && WEIGHT_G[toKey] !== undefined) {
+    const g      = num * WEIGHT_G[fromKey];
+    const result = Math.round((g / WEIGHT_G[toKey]) * 100) / 100;
+    res.json({ result, from, to, original: num });
+    return;
+  }
+
+  res.status(400).json({ error: "Unidades incompatíveis ou não suportadas" });
+}
