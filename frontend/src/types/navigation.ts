@@ -25,6 +25,7 @@ export type PlannerStackParamList = {
 export type ShoppingStackParamList = {
   ShoppingLists: undefined;
   ShoppingList: { listId: string };
+  BarcodeScanner: { listId: string };
 };
 
 export type ProfileStackParamList = {

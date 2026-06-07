@@ -103,9 +103,11 @@ function ShoppingListContent({
   ], [list.customCategories]);
 
   const grouped = useMemo(() => {
+    const knownKeys = new Set(allCategories.map((c) => c.key));
     const map = new Map<string, ShoppingListItem[]>();
     items.forEach((it) => {
-      const k = it.category ?? "Outros";
+      // categoria desconhecida (vinda de APIs externas) cai em Outros
+      const k = (it.category && knownKeys.has(it.category)) ? it.category : "Outros";
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(it);
     });
@@ -271,6 +273,9 @@ function ShoppingListContent({
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{list.name}</Text>
         <View style={{ flexDirection: "row" }}>
+          <Pressable style={styles.iconBtn} onPress={() => navigation.navigate("BarcodeScanner", { listId })}>
+            <Ionicons name="barcode-outline" size={22} color={colors.textPrimary} />
+          </Pressable>
           <Pressable style={styles.iconBtn} onPress={handleExportPDF}>
             <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
           </Pressable>
@@ -326,16 +331,17 @@ function ShoppingListContent({
                   <Pressable
                     key={item.id}
                     style={[styles.itemRow, idx === group.items.length - 1 && { borderBottomWidth: 0 }]}
-                    onPress={() => dispatch(toggleShoppingListItem({ listId, itemId: item.id, userId }))}
+                    onPress={() => openEdit(item)}
                   >
-                    <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
+                    <Pressable
+                      style={[styles.checkbox, item.checked && styles.checkboxChecked]}
+                      onPress={() => dispatch(toggleShoppingListItem({ listId, itemId: item.id, userId }))}
+                      hitSlop={8}
+                    >
                       {item.checked && <Ionicons name="checkmark" size={13} color="#fff" />}
-                    </View>
+                    </Pressable>
                     <Text style={[styles.itemName, item.checked && styles.itemChecked]} numberOfLines={1}>{item.name}</Text>
                     <Text style={[styles.itemQty, item.checked && styles.itemChecked]}>{item.quantity} {item.unit}</Text>
-                    <Pressable onPress={() => openEdit(item)} hitSlop={10} style={styles.rowAction}>
-                      <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
-                    </Pressable>
                     <Pressable onPress={() => handleDelete(item.id)} hitSlop={10} style={styles.rowAction}>
                       <Ionicons name="trash-outline" size={15} color={colors.danger} />
                     </Pressable>

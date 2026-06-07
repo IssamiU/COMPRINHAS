@@ -47,7 +47,13 @@
           }
         }
       ],
-      "expo-local-authentication"
+      "expo-local-authentication",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o acesso à câmera para escanear códigos de barras."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true
