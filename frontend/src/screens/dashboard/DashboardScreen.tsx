@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -19,7 +19,8 @@ import { setRecipes } from "../../store/slices/recipesSlice";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 // RF28 — tipos e constantes de clima
 type WeatherCondition = "quente" | "frio" | "chuvoso" | "normal";
@@ -41,6 +42,8 @@ const WEATHER_STYLE: Record<WeatherCondition, { bg: string; iconName: React.Comp
 };
 
 export default function DashboardScreen({ navigation }: any) {
+  // RF23 — tema reativo
+  const { colors } = useTheme();
   const dispatch = useDispatch();
 
   const user          = useSelector((s: RootState) => s.auth.user);
@@ -66,7 +69,7 @@ export default function DashboardScreen({ navigation }: any) {
     try {
       setWeatherLoading(true);
       const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== "granted") return; // não pede permissão no dashboard, usa só se já concedida
+      if (status !== "granted") return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const auth = await getAuth();
       if (!auth) return;
@@ -112,6 +115,46 @@ export default function DashboardScreen({ navigation }: any) {
     { icon: "cart-outline"       as const, label: "Compras",      color: "#8B5CF6",       bg: "#EDE9FE",           onPress: () => navigation.navigate("ShoppingTab") },
   ];
 
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    container: { paddingHorizontal: 20, paddingBottom: 32 },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 16, marginBottom: 24 },
+    greeting: { fontSize: 14, color: colors.textSecondary, marginBottom: 2 },
+    headerSub: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
+    metricsGrid: { flexDirection: "row", gap: 10, marginBottom: 28 },
+    metricCard: { flex: 1, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 10, alignItems: "center" },
+    metricNumber: { fontSize: 22, fontWeight: "700", marginBottom: 2 },
+    metricLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
+    sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 12 },
+    sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 8 },
+    seeAll: { fontSize: 13, color: colors.primary, fontWeight: "600" },
+    quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
+    quickCard: { width: "47%", borderRadius: 16, padding: 16, alignItems: "center", gap: 8 },
+    quickLabel: { fontSize: 13, fontWeight: "700" },
+    planRow: { marginBottom: 28 },
+    planChip: { backgroundColor: colors.primaryLight, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginRight: 10, alignItems: "center", minWidth: 72 },
+    planChipDay: { fontSize: 12, fontWeight: "700", color: colors.primaryDark, marginBottom: 2 },
+    planChipType: { fontSize: 11, color: colors.primaryDark, maxWidth: 64, textAlign: "center" },
+    emptyPlanCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", marginBottom: 28, gap: 8 },
+    emptyRecipeCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", gap: 8 },
+    emptyPlanTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+    emptyPlanSub: { fontSize: 13, color: colors.textSecondary },
+    recipeRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
+    recipeRowIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginRight: 12, overflow: "hidden" },
+    recipeRowImage: { width: 44, height: 44 },
+    recipeRowInfo: { flex: 1 },
+    recipeRowTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
+    recipeRowMeta: { fontSize: 12, color: colors.textSecondary },
+    // RF28 — card de clima
+    weatherCard:    { flexDirection: "row", alignItems: "center", borderRadius: 16, padding: 14, marginBottom: 20, gap: 12 },
+    weatherLeft:    { flexDirection: "row", alignItems: "center", gap: 10, flex: 0 },
+    weatherTemp:    { fontSize: 22, fontWeight: "700" },
+    weatherDesc:    { fontSize: 11, color: colors.textSecondary, textTransform: "capitalize", maxWidth: 80 },
+    weatherRight:   { flex: 1 },
+    weatherMessage: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+    weatherHint:    { fontSize: 12, fontWeight: "700" },
+  }), [colors]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -125,7 +168,7 @@ export default function DashboardScreen({ navigation }: any) {
 
         {/* RF28 — Card de clima */}
         {weatherLoading && (
-          <View style={[styles.weatherCard, { backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center" }]}>
+          <View style={[styles.weatherCard, { backgroundColor: colors.surface, justifyContent: "center", alignItems: "center" }]}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
@@ -233,19 +276,13 @@ export default function DashboardScreen({ navigation }: any) {
               style={styles.recipeRow}
               onPress={() => navigation.navigate("RecipesTab", { screen: "RecipeDetails", params: { recipeId: recipe.id } })}
             >
-              {/* Ícone ou imagem real */}
               <View style={styles.recipeRowIcon}>
                 {recipe.imageUrl ? (
-                  <Image
-                    source={{ uri: recipe.imageUrl }}
-                    style={styles.recipeRowImage}
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: recipe.imageUrl }} style={styles.recipeRowImage} resizeMode="cover" />
                 ) : (
                   <Ionicons name="restaurant" size={20} color={colors.primary} />
                 )}
               </View>
-
               <View style={styles.recipeRowInfo}>
                 <Text style={styles.recipeRowTitle} numberOfLines={1}>{recipe.title}</Text>
                 <Text style={styles.recipeRowMeta}>{recipe.prepTimeMinutes} min · {recipe.category}</Text>
@@ -259,53 +296,3 @@ export default function DashboardScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { paddingHorizontal: 20, paddingBottom: 32 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 16, marginBottom: 24 },
-  greeting: { fontSize: 14, color: colors.textSecondary, marginBottom: 2 },
-  headerSub: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
-  metricsGrid: { flexDirection: "row", gap: 10, marginBottom: 28 },
-  metricCard: { flex: 1, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 10, alignItems: "center" },
-  metricNumber: { fontSize: 22, fontWeight: "700", marginBottom: 2 },
-  metricLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 12 },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 8 },
-  seeAll: { fontSize: 13, color: colors.primary, fontWeight: "600" },
-  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
-  quickCard: { width: "47%", borderRadius: 16, padding: 16, alignItems: "center", gap: 8 },
-  quickLabel: { fontSize: 13, fontWeight: "700" },
-  planRow: { marginBottom: 28 },
-  planChip: { backgroundColor: colors.primaryLight, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginRight: 10, alignItems: "center", minWidth: 72 },
-  planChipDay: { fontSize: 12, fontWeight: "700", color: colors.primaryDark, marginBottom: 2 },
-  planChipType: { fontSize: 11, color: colors.primaryDark, maxWidth: 64, textAlign: "center" },
-  emptyPlanCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", marginBottom: 28, gap: 8 },
-  emptyRecipeCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", padding: 24, alignItems: "center", gap: 8 },
-  emptyPlanTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
-  emptyPlanSub: { fontSize: 13, color: colors.textSecondary },
-  recipeRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
-  recipeRowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    overflow: "hidden",
-  },
-  // Imagem ocupa todo o ícone quando disponível
-  recipeRowImage: { width: 44, height: 44 },
-  recipeRowInfo: { flex: 1 },
-  recipeRowTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
-  recipeRowMeta: { fontSize: 12, color: colors.textSecondary },
-  // RF28 — card de clima
-  weatherCard:    { flexDirection: "row", alignItems: "center", borderRadius: 16, padding: 14, marginBottom: 20, gap: 12 },
-  weatherLeft:    { flexDirection: "row", alignItems: "center", gap: 10, flex: 0 },
-  weatherTemp:    { fontSize: 22, fontWeight: "700" },
-  weatherDesc:    { fontSize: 11, color: colors.textSecondary, textTransform: "capitalize", maxWidth: 80 },
-  weatherRight:   { flex: 1 },
-  weatherMessage: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  weatherHint:    { fontSize: 12, fontWeight: "700" },
-});

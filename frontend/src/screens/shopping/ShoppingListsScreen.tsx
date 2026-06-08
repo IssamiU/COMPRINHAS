@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -18,9 +18,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { RootState } from "../../store";
 import { createList, deleteList, renameList } from "../../store/slices/shoppingListSlice";
 import { ShoppingList } from "../../types/shopping";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function ShoppingListsScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const dispatch = useDispatch();
   const userId   = useSelector((s: RootState) => s.auth.user?.id ?? "") as string;
   const lists    = useSelector((s: RootState) => s.shoppingList.listsByUser[userId] ?? []);
@@ -38,13 +40,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
     if (editingList) {
       dispatch(renameList({ id: editingList.id, name: listName.trim(), userId }));
     } else {
-      dispatch(createList({
-        id: Date.now().toString(),
-        name: listName.trim(),
-        createdAt: new Date().toISOString(),
-        items: [],
-        userId,
-      }));
+      dispatch(createList({ id: Date.now().toString(), name: listName.trim(), createdAt: new Date().toISOString(), items: [], userId }));
     }
     closeModal();
   }
@@ -64,6 +60,44 @@ export default function ShoppingListsScreen({ navigation }: any) {
     if (list.items.length === 0) return 0;
     return Math.round((list.items.filter((i) => i.checked).length / list.items.length) * 100);
   }
+
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
+    headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
+    addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    listContent: { paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 },
+    card: { flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.surface, borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
+    cardIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginRight: 12, flexShrink: 0 },
+    cardContent: { flex: 1 },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+    cardName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, flex: 1, marginRight: 8 },
+    cardActions: { flexDirection: "row", gap: 4 },
+    iconBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+    cardMeta: { fontSize: 12, color: colors.textMuted, marginBottom: 8 },
+    progressContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
+    progressBar: { flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 99, overflow: "hidden" },
+    progressFill: { height: 6, backgroundColor: colors.primary, borderRadius: 99 },
+    progressText: { fontSize: 11, fontWeight: "700", color: colors.primary, minWidth: 28, textAlign: "right" },
+    emptyWrapper: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
+    emptyButton: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+    emptyButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    modalKAV: { flex: 1, justifyContent: "flex-end" },
+    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+    modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: Platform.OS === "ios" ? 40 : 24 },
+    modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
+    input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 16, color: colors.textPrimary, fontSize: 15 },
+    primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginBottom: 10 },
+    primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    secondaryBtn: { backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    secondaryBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
+    supermarketsCard: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border, gap: 12 },
+    supermarketsCardIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+    supermarketsCardTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
+    supermarketsCardSub: { fontSize: 12, color: colors.textMuted },
+  }), [colors]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -105,10 +139,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
           const progress = getProgress(item);
           const checked  = item.items.filter((i) => i.checked).length;
           return (
-            <Pressable
-              style={styles.card}
-              onPress={() => navigation.navigate("ShoppingList", { listId: item.id })}
-            >
+            <Pressable style={styles.card} onPress={() => navigation.navigate("ShoppingList", { listId: item.id })}>
               <View style={styles.cardIcon}>
                 <Ionicons name="basket-outline" size={22} color={colors.primary} />
               </View>
@@ -141,17 +172,11 @@ export default function ShoppingListsScreen({ navigation }: any) {
         }}
       />
 
-      {/* Modal criar/renomear — com KeyboardAvoidingView */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
-        <KeyboardAvoidingView
-          style={styles.modalKAV}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={styles.modalKAV} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <Pressable style={styles.modalBackdrop} onPress={closeModal} />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {editingList ? "Renomear lista" : "Nova lista"}
-            </Text>
+            <Text style={styles.modalTitle}>{editingList ? "Renomear lista" : "Nova lista"}</Text>
             <TextInput
               style={styles.input}
               placeholder='Ex: "Feira semanal"'
@@ -174,42 +199,3 @@ export default function ShoppingListsScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
-  headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
-  addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  listContent: { paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 },
-  card: { flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.surface, borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
-  cardIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginRight: 12, flexShrink: 0 },
-  cardContent: { flex: 1 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  cardName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, flex: 1, marginRight: 8 },
-  cardActions: { flexDirection: "row", gap: 4 },
-  iconBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  cardMeta: { fontSize: 12, color: colors.textMuted, marginBottom: 8 },
-  progressContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressBar: { flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 99, overflow: "hidden" },
-  progressFill: { height: 6, backgroundColor: colors.primary, borderRadius: 99 },
-  progressText: { fontSize: 11, fontWeight: "700", color: colors.primary, minWidth: 28, textAlign: "right" },
-  emptyWrapper: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
-  emptyButton: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
-  emptyButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  // Modal
-  modalKAV: { flex: 1, justifyContent: "flex-end" },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: Platform.OS === "ios" ? 40 : 24 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
-  input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 16, color: colors.textPrimary, fontSize: 15 },
-  primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginBottom: 10 },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  secondaryBtn: { backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
-  secondaryBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
-  supermarketsCard: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border, gap: 12 },
-  supermarketsCardIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  supermarketsCardTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
-  supermarketsCardSub: { fontSize: 12, color: colors.textMuted },
-});

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -19,9 +19,11 @@ import { updateUser } from "../../store/slices/authSlice";
 import { pickImage, uploadImage } from "../../services/imageService";
 import { getAuth, saveAuth } from "../../storage/authStorage";
 import { API_URL } from "../../services/api";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function PersonalDataScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const dispatch = useDispatch();
   const user = useSelector((s: RootState) => s.auth.user);
 
@@ -29,12 +31,11 @@ export default function PersonalDataScreen({ navigation }: any) {
     return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
   }
 
-  // avatarUri = URI local para preview; uploadedUrl = URL Cloudinary já enviada
   const [avatarUri, setAvatarUri]     = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
-  const [name, setName]             = useState(user?.name ?? "");
-  const [email, setEmail]           = useState(user?.email ?? "");
+  const [name, setName]               = useState(user?.name ?? "");
+  const [email, setEmail]             = useState(user?.email ?? "");
   const [currentPass, setCurrentPass] = useState("");
   const [newPass, setNewPass]         = useState("");
   const [saving, setSaving]           = useState(false);
@@ -46,7 +47,7 @@ export default function PersonalDataScreen({ navigation }: any) {
     try {
       setUploading(true);
       const { url } = await uploadImage(uri);
-      setUploadedUrl(url); // armazena URL Cloudinary para enviar no handleSave
+      setUploadedUrl(url);
     } catch (e: any) {
       Alert.alert("Erro", e.message || "Falha ao enviar foto.");
       setAvatarUri(null);
@@ -57,33 +58,27 @@ export default function PersonalDataScreen({ navigation }: any) {
   }
 
   async function handleSave() {
-    if (!name.trim()) { Alert.alert("Atenção", "O nome não pode estar vazio."); return; }
+    if (!name.trim())  { Alert.alert("Atenção", "O nome não pode estar vazio."); return; }
     if (!email.trim()) { Alert.alert("Atenção", "O e-mail não pode estar vazio."); return; }
     if (newPass && newPass.length < 6) { Alert.alert("Atenção", "A nova senha deve ter pelo menos 6 caracteres."); return; }
     if (newPass && !currentPass) { Alert.alert("Atenção", "Digite a senha atual para alterá-la."); return; }
-
     try {
       setSaving(true);
       const auth = await getAuth();
       if (!auth) return;
-
       const body: Record<string, string> = { name: name.trim(), email: email.trim() };
-      if (newPass)      { body.currentPassword = currentPass; body.newPassword = newPass; }
-      if (uploadedUrl)  { body.avatarUrl = uploadedUrl; }
-
+      if (newPass)     { body.currentPassword = currentPass; body.newPassword = newPass; }
+      if (uploadedUrl) { body.avatarUrl = uploadedUrl; }
       const res = await fetch(`${API_URL}/auth/me`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.accessToken}` },
         body: JSON.stringify(body),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Erro ao salvar");
-
       const updatedUser = { name: data.user.name, email: data.user.email, avatarUrl: data.user.avatarUrl ?? null };
       dispatch(updateUser(updatedUser));
       await saveAuth({ ...auth, user: { ...auth.user, ...updatedUser } });
-
       setCurrentPass("");
       setNewPass("");
       Alert.alert("Sucesso", "Dados atualizados!", [{ text: "OK", onPress: () => navigation.goBack() }]);
@@ -93,6 +88,29 @@ export default function PersonalDataScreen({ navigation }: any) {
       setSaving(false);
     }
   }
+
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+    headerTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginLeft: 8 },
+    container: { padding: 16, paddingBottom: 48 },
+    avatarSection: { alignItems: "center", paddingVertical: 24, gap: 8 },
+    avatarWrap: { width: 96, height: 96 },
+    avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+    avatarImage: { width: 96, height: 96, borderRadius: 48 },
+    avatarText: { color: colors.primary, fontSize: 28, fontWeight: "700" },
+    avatarCamera: { position: "absolute", bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
+    avatarChangeText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
+    sectionTitle: { fontSize: 11, fontWeight: "700", color: colors.textMuted, letterSpacing: 0.5, marginBottom: 8 },
+    card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 4 },
+    fieldLabel: { fontSize: 12, fontWeight: "500", color: colors.textMuted, marginTop: 10, marginBottom: 4 },
+    input: { height: 44, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
+    divider: { height: 1, backgroundColor: colors.border },
+    savingText: { textAlign: "center", color: colors.textMuted, fontSize: 13, marginTop: 12 },
+    dangerBtn: { height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#FCA5A5", alignItems: "center", justifyContent: "center", marginTop: 24 },
+    dangerBtnText: { color: colors.danger, fontWeight: "600", fontSize: 14 },
+  }), [colors]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -109,7 +127,6 @@ export default function PersonalDataScreen({ navigation }: any) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
               {avatarUri || user?.avatarUrl ? (
@@ -128,7 +145,6 @@ export default function PersonalDataScreen({ navigation }: any) {
             </Pressable>
           </View>
 
-          {/* Informações */}
           <Text style={styles.sectionTitle}>INFORMAÇÕES</Text>
           <View style={styles.card}>
             <Text style={styles.fieldLabel}>Nome completo</Text>
@@ -138,7 +154,6 @@ export default function PersonalDataScreen({ navigation }: any) {
             <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" returnKeyType="done" />
           </View>
 
-          {/* Alterar senha */}
           <Text style={[styles.sectionTitle, { marginTop: 24 }]}>ALTERAR SENHA</Text>
           <View style={styles.card}>
             <Text style={styles.fieldLabel}>Senha atual</Text>
@@ -159,26 +174,3 @@ export default function PersonalDataScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  headerTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginLeft: 8 },
-  container: { padding: 16, paddingBottom: 48, gap: 0 },
-  avatarSection: { alignItems: "center", paddingVertical: 24, gap: 8 },
-  avatarWrap: { width: 96, height: 96 },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  avatarImage: { width: 96, height: 96, borderRadius: 48 },
-  avatarText: { color: colors.primary, fontSize: 28, fontWeight: "700" },
-  avatarCamera: { position: "absolute", bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
-  avatarChangeText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
-  sectionTitle: { fontSize: 11, fontWeight: "700", color: colors.textMuted, letterSpacing: 0.5, marginBottom: 8 },
-  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 4 },
-  fieldLabel: { fontSize: 12, fontWeight: "500", color: colors.textMuted, marginTop: 10, marginBottom: 4 },
-  input: { height: 44, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
-  divider: { height: 1, backgroundColor: colors.border },
-  savingText: { textAlign: "center", color: colors.textMuted, fontSize: 13, marginTop: 12 },
-  dangerBtn: { height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#FCA5A5", alignItems: "center", justifyContent: "center", marginTop: 24 },
-  dangerBtnText: { color: colors.danger, fontWeight: "600", fontSize: 14 },
-});

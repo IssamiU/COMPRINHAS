@@ -33,7 +33,7 @@ import {
 } from "../../store/slices/shoppingListSlice";
 import { ShoppingList, ShoppingListItem } from "../../types/shopping";
 import { generateShoppingListFromPlanner } from "../../utils/generateShoppingList";
-import { colors } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 const UNITS = [
   "g", "kg", "ml", "l", "xícara", "colher de sopa",
@@ -53,6 +53,15 @@ const CATEGORIES = [
 ];
 
 function NotFoundScreen({ onBack }: { onBack: () => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
+    notFoundTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    notFoundSub: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
+    backBtn: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
+    backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  }), [colors]);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.notFound}>
@@ -81,6 +90,72 @@ function ShoppingListContent({
   const dispatch     = useDispatch();
   const plannedMeals = useSelector((s: RootState) => s.planner.plannedMeals);
   const recipes      = useSelector((s: RootState) => s.recipes.recipes);
+  const { colors } = useTheme();
+  // RF23 — estilos reativos ao tema
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
+    notFoundTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    notFoundSub: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
+    backBtn: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
+    backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
+    iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+    headerTitle: { flex: 1, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    progressCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+    progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+    progressText: { fontSize: 13, color: colors.textSecondary },
+    progressBold: { color: colors.textPrimary, fontWeight: "700" },
+    progressPct: { color: colors.primary, fontWeight: "700", fontSize: 14 },
+    track: { height: 8, backgroundColor: colors.borderLight, borderRadius: 999, overflow: "hidden" },
+    fill: { height: "100%", backgroundColor: colors.primary, borderRadius: 999 },
+    scrollContent: { paddingBottom: 120 },
+    quickActions: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginVertical: 8 },
+    quickBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
+    quickBtnDanger: { borderColor: colors.danger },
+    quickBtnText: { fontSize: 13, fontWeight: "700", color: colors.primary },
+    groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
+    groupHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
+    groupEmoji: { fontSize: 18, marginRight: 8 },
+    groupTitle: { flex: 1, fontSize: 14, fontWeight: "700", color: colors.textPrimary },
+    groupPill: { backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+    groupPillText: { color: colors.primaryDark, fontSize: 11, fontWeight: "700" },
+    itemRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border },
+    checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center", marginRight: 12 },
+    checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+    itemName: { flex: 1, fontSize: 15, color: colors.textPrimary },
+    itemQty: { fontSize: 13, color: colors.textSecondary, marginLeft: 6 },
+    itemChecked: { color: colors.textMuted, textDecorationLine: "line-through" },
+    rowAction: { padding: 4, marginLeft: 6 },
+    empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
+    emptyTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+    emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+    fabs: { position: "absolute", right: 20, bottom: 24, alignItems: "center", gap: 12 },
+    fab: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+    fabPrimary: { backgroundColor: colors.primary },
+    fabSecondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+    sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },
+    sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
+    sheetTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
+    fieldLabel: { fontSize: 12, fontWeight: "600", color: colors.textMuted, marginBottom: 6, marginTop: 8 },
+    input: { minHeight: 46, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.background },
+    rowGap: { flexDirection: "row", gap: 12 },
+    pickerBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    pickerBtnText: { flex: 1, fontSize: 15, color: colors.textPrimary },
+    pickerOption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    pickerOptionText: { fontSize: 15, color: colors.textPrimary },
+    modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
+    cancelBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    cancelBtnText: { color: colors.textSecondary, fontWeight: "700" },
+    confirmBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+    confirmBtnText: { color: "#fff", fontWeight: "700" },
+    inlineList: { maxHeight: 150, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginTop: 4, backgroundColor: colors.surface, overflow: "hidden" },
+    inlineItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    inlineItemText: { fontSize: 14, color: colors.textPrimary },
+    catSeparator: { paddingHorizontal: 14, paddingVertical: 6, backgroundColor: colors.borderLight },
+    catSeparatorText: { fontSize: 11, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  }), [colors]);
 
   const [addOpen,        setAddOpen]        = useState(false);
   const [editingItem,    setEditingItem]    = useState<ShoppingListItem | null>(null);
@@ -513,67 +588,3 @@ export default function ShoppingListScreen({ navigation, route }: any) {
   return <ShoppingListContent navigation={navigation} list={list} listId={listId} userId={userId} />;
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
-  notFoundTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  notFoundSub: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
-  backBtn: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
-  backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  headerTitle: { flex: 1, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  progressCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
-  progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  progressText: { fontSize: 13, color: colors.textSecondary },
-  progressBold: { color: colors.textPrimary, fontWeight: "700" },
-  progressPct: { color: colors.primary, fontWeight: "700", fontSize: 14 },
-  track: { height: 8, backgroundColor: colors.borderLight, borderRadius: 999, overflow: "hidden" },
-  fill: { height: "100%", backgroundColor: colors.primary, borderRadius: 999 },
-  scrollContent: { paddingBottom: 120 },
-  quickActions: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginVertical: 8 },
-  quickBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
-  quickBtnDanger: { borderColor: colors.danger },
-  quickBtnText: { fontSize: 13, fontWeight: "700", color: colors.primary },
-  groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
-  groupHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
-  groupEmoji: { fontSize: 18, marginRight: 8 },
-  groupTitle: { flex: 1, fontSize: 14, fontWeight: "700", color: colors.textPrimary },
-  groupPill: { backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  groupPillText: { color: colors.primaryDark, fontSize: 11, fontWeight: "700" },
-  itemRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
-  itemName: { flex: 1, fontSize: 15, color: colors.textPrimary },
-  itemQty: { fontSize: 13, color: colors.textSecondary, marginLeft: 6 },
-  itemChecked: { color: colors.textMuted, textDecorationLine: "line-through" },
-  rowAction: { padding: 4, marginLeft: 6 },
-  empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
-  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
-  fabs: { position: "absolute", right: 20, bottom: 24, alignItems: "center", gap: 12 },
-  fab: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  fabPrimary: { backgroundColor: colors.primary },
-  fabSecondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-  sheetTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 },
-  fieldLabel: { fontSize: 12, fontWeight: "600", color: colors.textMuted, marginBottom: 6, marginTop: 8 },
-  input: { minHeight: 46, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.background },
-  rowGap: { flexDirection: "row", gap: 12 },
-  pickerBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pickerBtnText: { flex: 1, fontSize: 15, color: colors.textPrimary },
-  pickerOption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  pickerOptionText: { fontSize: 15, color: colors.textPrimary },
-  modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
-  cancelBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
-  cancelBtnText: { color: colors.textSecondary, fontWeight: "700" },
-  confirmBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  confirmBtnText: { color: "#fff", fontWeight: "700" },
-  inlineList: { maxHeight: 150, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginTop: 4, backgroundColor: colors.surface, overflow: "hidden" },
-  inlineItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  inlineItemText: { fontSize: 14, color: colors.textPrimary },
-  catSeparator: { paddingHorizontal: 14, paddingVertical: 6, backgroundColor: colors.borderLight },
-  catSeparatorText: { fontSize: 11, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
-});

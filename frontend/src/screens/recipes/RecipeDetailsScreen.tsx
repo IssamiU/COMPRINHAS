@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,7 +37,7 @@ import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
 import { scaleIngredient } from "../../utils/scaleIngredient";
-import { colors } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -48,7 +48,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ── WheelPicker ──────────────────────────────────────────────────────────────
+// â”€â”€ WheelPicker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
@@ -66,6 +66,16 @@ function WheelPicker({
   onIndexChange: (i: number) => void;
   label: string;
 }) {
+  const { colors } = useTheme();
+  const wheelStyles = useMemo(() => StyleSheet.create({
+    wrapper: { flex: 1, alignItems: "center" },
+    label: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+    container: { height: PICKER_HEIGHT, width: "100%", overflow: "hidden" },
+    item: { height: ITEM_HEIGHT, alignItems: "center", justifyContent: "center" },
+    text: { fontSize: 28, fontWeight: "300", color: colors.textSecondary, opacity: 0.4 },
+    textSelected: { fontSize: 40, fontWeight: "700", color: colors.textPrimary, opacity: 1 },
+    line: { position: "absolute", left: 12, right: 12, height: 1, backgroundColor: colors.border, zIndex: 10 },
+  }), [colors]);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -110,17 +120,7 @@ function WheelPicker({
   );
 }
 
-const wheelStyles = StyleSheet.create({
-  wrapper: { flex: 1, alignItems: "center" },
-  label: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  container: { height: PICKER_HEIGHT, width: "100%", overflow: "hidden" },
-  item: { height: ITEM_HEIGHT, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 28, fontWeight: "300", color: colors.textSecondary, opacity: 0.4 },
-  textSelected: { fontSize: 40, fontWeight: "700", color: colors.textPrimary, opacity: 1 },
-  line: { position: "absolute", left: 12, right: 12, height: 1, backgroundColor: colors.border, zIndex: 10 },
-});
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function calcSecondsLeft(startedAt: number, totalSeconds: number): number {
   return Math.max(0, totalSeconds - Math.floor((Date.now() - startedAt) / 1000));
 }
@@ -131,8 +131,8 @@ function getTimersFromStore() {
 
 type TabKey = "ingredients" | "steps";
 
-// RF18 — unidades culinárias para conversão
-const VOLUME_UNITS = ["ml", "l", "xícara", "copo", "colher de sopa", "colher de chá"];
+// RF18 â€” unidades culinÃ¡rias para conversÃ£o
+const VOLUME_UNITS = ["ml", "l", "xÃ­cara", "copo", "colher de sopa", "colher de chÃ¡"];
 const WEIGHT_UNITS = ["g", "kg", "oz"];
 
 function getCompatibleUnits(unit: string): string[] {
@@ -142,12 +142,12 @@ function getCompatibleUnits(unit: string): string[] {
   return [];
 }
 
-// Unidades culinárias exibem frações; métricas exibem decimais
-const CULINARY_UNITS = ["xícara", "copo", "colher de sopa", "colher de chá"];
+// Unidades culinÃ¡rias exibem fraÃ§Ãµes; mÃ©tricas exibem decimais
+const CULINARY_UNITS = ["xÃ­cara", "copo", "colher de sopa", "colher de chÃ¡"];
 
 function toFraction(value: number): string {
   if (value <= 0) return "0";
-  // menor que 1/4 → inútil na prática, avisar em vez de mostrar 0
+  // menor que 1/4 â†’ inÃºtil na prÃ¡tica, avisar em vez de mostrar 0
   if (value < 0.125) return "< 1/4";
   const quarters = Math.round(value * 4);
   const whole    = Math.floor(quarters / 4);
@@ -164,12 +164,13 @@ function formatConverted(value: number, unit: string): string {
   return String(Math.round(value * 100) / 100);
 }
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+// â”€â”€ Main Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function RecipeDetailsScreen({ route, navigation }: any) {
   const { recipeId } = route.params;
   const dispatch        = useDispatch();
   const currentUserId   = useSelector((s: RootState) => String(s.auth.user?.id ?? ""));
-  const currentUserName = useSelector((s: RootState) => s.auth.user?.name ?? "Usuário");
+  const currentUserName = useSelector((s: RootState) => s.auth.user?.name ?? "UsuÃ¡rio");
+  const { colors } = useTheme();
 
   const [recipe, setRecipe] = useState<any>(null);
   const [targetServings, setTargetServings] = useState<number>(1);
@@ -183,7 +184,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [duplicating, setDuplicating] = useState(false);
   const [markingPrepared, setMarkingPrepared] = useState(false);
 
-  // RF21 — avaliações
+  // RF21 â€” avaliaÃ§Ãµes
   const [reviews, setReviews]               = useState<any[]>([]);
   const [avgRating, setAvgRating]           = useState(0);
   const [reviewCount, setReviewCount]       = useState(0);
@@ -193,7 +194,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [filterRating, setFilterRating]     = useState(0); // 0 = todas
 
-  // RF18 — conversão de unidades
+  // RF18 â€” conversÃ£o de unidades
   const [convertVisible, setConvertVisible]     = useState(false);
   const [convertIngredient, setConvertIngredient] = useState<any>(null);
   const [convertToUnit, setConvertToUnit]       = useState("");
@@ -254,7 +255,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await Notifications.scheduleNotificationAsync({
-      content: { title: "⏰ Timer finalizado!", body: `Passo ${stepIndex + 1} concluído.`, sound: true },
+      content: { title: "â° Timer finalizado!", body: `Passo ${stepIndex + 1} concluÃ­do.`, sound: true },
       trigger: null,
     });
   }
@@ -266,7 +267,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       const response = await fetch(`${API_URL}/recipes/${recipeId}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
       const data = await response.json();
       if (response.status === 404) {
-        Alert.alert("Receita não encontrada", "Esta receita foi removida ou não existe mais.", [
+        Alert.alert("Receita nÃ£o encontrada", "Esta receita foi removida ou nÃ£o existe mais.", [
           { text: "OK", onPress: () => navigation.goBack() },
         ]);
         return;
@@ -279,7 +280,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     } catch { Alert.alert("Erro", "Erro ao carregar receita"); }
   }
 
-  // RF21 — carrega avaliações da receita
+  // RF21 â€” carrega avaliaÃ§Ãµes da receita
   async function loadReviews() {
     setLoadingReviews(true);
     try {
@@ -298,9 +299,9 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     finally { setLoadingReviews(false); }
   }
 
-  // RF21 — envia ou atualiza avaliação (upsert)
+  // RF21 â€” envia ou atualiza avaliaÃ§Ã£o (upsert)
   async function submitReview() {
-    if (myRating === 0) { Alert.alert("Avaliação", "Selecione pelo menos 1 estrela."); return; }
+    if (myRating === 0) { Alert.alert("AvaliaÃ§Ã£o", "Selecione pelo menos 1 estrela."); return; }
     try {
       setSubmittingReview(true);
       const auth = await getAuth();
@@ -315,7 +316,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         setMyRating(0);
         setMyComment("");
       }
-    } catch { Alert.alert("Erro", "Não foi possível enviar a avaliação."); }
+    } catch { Alert.alert("Erro", "NÃ£o foi possÃ­vel enviar a avaliaÃ§Ã£o."); }
     finally { setSubmittingReview(false); }
   }
 
@@ -340,15 +341,15 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.accessToken}` },
         body: JSON.stringify({ recipeId }),
       });
-      Alert.alert("Receita preparada!", "Registrado no seu histórico.", [
-        { text: "Ver histórico", onPress: () => navigation.navigate("History") },
+      Alert.alert("Receita preparada!", "Registrado no seu histÃ³rico.", [
+        { text: "Ver histÃ³rico", onPress: () => navigation.navigate("History") },
         { text: "OK" },
       ]);
-    } catch { Alert.alert("Erro", "Não foi possível registrar o preparo."); }
+    } catch { Alert.alert("Erro", "NÃ£o foi possÃ­vel registrar o preparo."); }
     finally { setMarkingPrepared(false); }
   }
 
-  // RF14 — compartilhar receita via deep link
+  // RF14 â€” compartilhar receita via deep link
   async function handleShare() {
     const link = `mealsync://recipe/${recipeId}`;
     await Share.share({
@@ -368,16 +369,16 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
-      Alert.alert("Receita salva!", "Uma cópia foi adicionada às suas receitas.");
+      Alert.alert("Receita salva!", "Uma cÃ³pia foi adicionada Ã s suas receitas.");
     } catch (e: any) {
-      Alert.alert("Erro", e.message || "Erro ao salvar cópia");
+      Alert.alert("Erro", e.message || "Erro ao salvar cÃ³pia");
     } finally {
       setDuplicating(false);
     }
   }
 
   async function handleDuplicate() {
-    Alert.alert("Duplicar receita", "Uma cópia será criada e aberta para edição.", [
+    Alert.alert("Duplicar receita", "Uma cÃ³pia serÃ¡ criada e aberta para ediÃ§Ã£o.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Duplicar", onPress: async () => {
         try {
@@ -394,7 +395,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     ]);
   }
 
-  // RF18 — busca conversão no backend proxy
+  // RF18 â€” busca conversÃ£o no backend proxy
   async function handleConvert(toUnit: string) {
     if (!convertIngredient || !recipe) return;
     setConvertToUnit(toUnit);
@@ -423,7 +424,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
 
   function confirmTimer() {
     const totalSeconds = selectedHours * 3600 + selectedMinutes * 60;
-    if (totalSeconds <= 0) { Alert.alert("Atenção", "Defina pelo menos 1 minuto."); return; }
+    if (totalSeconds <= 0) { Alert.alert("AtenÃ§Ã£o", "Defina pelo menos 1 minuto."); return; }
     setModalVisible(false);
     startTimerForStep(modalStepIndex, totalSeconds);
   }
@@ -436,7 +437,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     let notificationId: string | null = null;
     try {
       notificationId = await Notifications.scheduleNotificationAsync({
-        content: { title: "⏰ Timer finalizado!", body: `Passo ${stepIndex + 1} concluído.`, sound: true },
+        content: { title: "â° Timer finalizado!", body: `Passo ${stepIndex + 1} concluÃ­do.`, sound: true },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
       });
     } catch {}
@@ -481,6 +482,124 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
 
+  // RF23 - estilos reativos ao tema
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    scroll: { flex: 1 },
+    loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
+    loadingText: { fontSize: 16, color: colors.textSecondary },
+    hero: { width: "100%", height: 300, backgroundColor: "#1a1a1a" },
+    heroImage: { width: "100%", height: "100%" },
+    heroPlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "#2d2d2d" },
+    heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)" },
+    heroHeader: {
+      position: "absolute", top: 0, left: 0, right: 0,
+      flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+      paddingHorizontal: 16,
+      paddingTop: Platform.OS === "android" ? 16 : 0,
+    },
+    heroHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+    iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
+    iconCircleSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
+    section: { paddingHorizontal: 16, marginTop: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary, lineHeight: 28, marginBottom: 10 },
+    metaRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+    badge: { backgroundColor: colors.primaryLight, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
+    badgeText: { color: colors.primaryDark, fontWeight: "700", fontSize: 12 },
+    statsRow: { flexDirection: "row", alignItems: "center" },
+    statItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+    statText: { fontSize: 14, color: colors.textSecondary },
+    statDivider: { width: 1, height: 14, backgroundColor: colors.border, marginHorizontal: 12 },
+    card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
+    stepperRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    stepperLabel: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    stepperHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    stepper: { flexDirection: "row", alignItems: "center", gap: 14 },
+    stepperBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    stepperValue: { minWidth: 28, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    tabsContainer: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: colors.border },
+    tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 10 },
+    tabActive: { backgroundColor: colors.primary },
+    tabText: { color: colors.textSecondary, fontWeight: "600", fontSize: 14 },
+    tabTextActive: { color: "#fff", fontWeight: "700" },
+    ingredientRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12 },
+    ingredientDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    ingredientQtyBox: { backgroundColor: colors.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, minWidth: 72, alignItems: "center" },
+    ingredientQtyText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
+    ingredientName: { flex: 1, color: colors.textPrimary, fontSize: 15 },
+    stepCard: { flexDirection: "row", gap: 12, marginBottom: 10 },
+    stepNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    stepNumberText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    stepText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+    timerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" },
+    timerInitBtn: { marginTop: 10, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+    timerInitText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
+    timerDisplay: { fontSize: 20, fontWeight: "700", color: colors.primary },
+    timerDone: { fontSize: 14, fontWeight: "700", color: colors.primary },
+    timerActionBtn: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+    timerActionText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
+    secondaryActions: { flexDirection: "column", gap: 8, marginBottom: 8 },
+    outlineBtn: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.primary, paddingVertical: 13, borderRadius: 12 },
+    outlineBtnText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
+    ctaBar: {
+      position: "absolute", left: 0, right: 0, bottom: 0,
+      flexDirection: "row", gap: 10,
+      paddingHorizontal: 16, paddingTop: 12, paddingBottom: Platform.OS === "ios" ? 32 : 16,
+      backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+    },
+    ctaBtn: {
+      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12,
+    },
+    ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+    modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44 },
+    modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 99, alignSelf: "center", marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
+    modalSub: { fontSize: 13, color: colors.textSecondary, marginBottom: 20 },
+    pickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 },
+    pickerSep: { fontSize: 36, fontWeight: "700", color: colors.textPrimary, marginHorizontal: 4, marginTop: 20, lineHeight: 56 },
+    pickerPreview: { textAlign: "center", fontSize: 14, color: colors.textSecondary, marginBottom: 24, fontWeight: "500" },
+    modalBtns: { flexDirection: "row", gap: 12 },
+    modalCancel: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 15, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    modalCancelText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
+    modalConfirm: { flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
+    modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    authorName:          { fontSize: 13, color: colors.textSecondary, marginTop: 2, marginBottom: 4 },
+    reviewsHeader:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    reviewsSectionTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+    avgRow:              { flexDirection: "row", alignItems: "center", gap: 6 },
+    avgText:             { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+    reviewForm:          { gap: 12, marginBottom: 12 },
+    reviewFormTitle:     { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+    reviewInput:         { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, minHeight: 76, textAlignVertical: "top" },
+    noReviewsText:       { fontSize: 14, color: colors.textMuted, textAlign: "center", marginTop: 12 },
+    starFilterRow:       { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+    starFilterBtn:       { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+    starFilterBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    starFilterText:      { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    starFilterTextActive:{ color: colors.primaryDark, fontWeight: "700" },
+    reviewCard:          { marginTop: 10, gap: 4 },
+    reviewCardHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    reviewAuthor:        { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
+    reviewComment:       { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    reviewDate:          { fontSize: 11, color: colors.textMuted },
+    convertBtn: { paddingHorizontal: 2, paddingVertical: 4 },
+    convertCurrentRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surfaceAlt, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16, width: "100%" },
+    convertCurrentLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+    convertCurrentValue: { fontSize: 15, color: colors.textPrimary, fontWeight: "700" },
+    convertPickerLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600", alignSelf: "flex-start", marginBottom: 10 },
+    convertPills: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
+    convertPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+    convertPillActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    convertPillText: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+    convertPillTextActive: { color: colors.primaryDark, fontWeight: "700" },
+    convertResultBox: { width: "100%", minHeight: 60, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceAlt, borderRadius: 12, marginBottom: 20, paddingVertical: 14 },
+    convertResultLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", marginBottom: 2 },
+    convertResultValue: { fontSize: 24, color: colors.primary, fontWeight: "700" },
+    convertResultHint: { fontSize: 13, color: colors.textMuted },
+  }), [colors]);
+
   if (!recipe) {
     return (
       <View style={styles.loadingContainer}>
@@ -489,7 +608,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     );
   }
 
-  // RF21 — determina se o usuário logado é dono da receita
+  // RF21 â€” determina se o usuÃ¡rio logado Ã© dono da receita
   const isOwner = recipe.userId ? String(recipe.userId) === String(currentUserId) : true;
 
   return (
@@ -517,7 +636,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <View style={styles.heroHeaderRight}>
-              {/* RF21 — editar/duplicar só para o dono */}
+              {/* RF21 â€” editar/duplicar sÃ³ para o dono */}
               {isOwner && (
                 <>
                   <Pressable style={styles.iconCircleSmall} onPress={() => navigation.navigate("EditRecipe", { recipeId })}>
@@ -528,7 +647,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   </Pressable>
                 </>
               )}
-              {/* RF14 — compartilhar via deep link */}
+              {/* RF14 â€” compartilhar via deep link */}
               <Pressable style={styles.iconCircleSmall} onPress={handleShare} accessibilityLabel="Compartilhar receita" accessibilityRole="button">
                 <Feather name="share" size={15} color="#fff" />
               </Pressable>
@@ -542,7 +661,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         {/* INFO */}
         <View style={styles.section}>
           <Text style={styles.title}>{recipe.title}</Text>
-          {/* RF21 — autor visível apenas em receitas de outros usuários */}
+          {/* RF21 â€” autor visÃ­vel apenas em receitas de outros usuÃ¡rios */}
           {!isOwner && !!recipe.authorName && (
             <Text style={styles.authorName}>Por {recipe.authorName}</Text>
           )}
@@ -561,16 +680,16 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{targetServings} porções</Text>
+              <Text style={styles.statText}>{targetServings} porÃ§Ãµes</Text>
             </View>
           </View>
         </View>
 
-        {/* STEPPER PORÇÕES */}
+        {/* STEPPER PORÃ‡Ã•ES */}
         <View style={[styles.card, styles.section]}>
           <View style={styles.stepperRow}>
             <View>
-              <Text style={styles.stepperLabel}>Porções</Text>
+              <Text style={styles.stepperLabel}>PorÃ§Ãµes</Text>
               <Text style={styles.stepperHint}>Ajuste os ingredientes</Text>
             </View>
             <View style={styles.stepper}>
@@ -609,7 +728,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   </Text>
                 </View>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                {/* RF18 — botão de conversão visível apenas para unidades suportadas */}
+                {/* RF18 â€” botÃ£o de conversÃ£o visÃ­vel apenas para unidades suportadas */}
                 {getCompatibleUnits(ingredient.unit).length > 0 && (
                   <Pressable
                     style={styles.convertBtn}
@@ -653,15 +772,15 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                           </Pressable>
                         ) : timer.status === "done" ? (
                           <View style={styles.timerRow}>
-                            <Text style={styles.timerDone}>✓ Concluído</Text>
+                            <Text style={styles.timerDone}>âœ“ ConcluÃ­do</Text>
                             <Pressable style={styles.timerActionBtn} onPress={() => handleResetTimer(index)}>
-                              <Text style={styles.timerActionText}>↺ Novo</Text>
+                              <Text style={styles.timerActionText}>â†º Novo</Text>
                             </Pressable>
                           </View>
                         ) : (
                           <View style={styles.timerRow}>
                             <Text style={[styles.timerDisplay, timer.secondsLeft <= 10 && { color: colors.danger }]}>
-                              ⏱ {formatTime(timer.secondsLeft)}
+                              â± {formatTime(timer.secondsLeft)}
                             </Text>
                             {timer.running ? (
                               <Pressable style={styles.timerActionBtn} onPress={() => handlePauseTimer(index)}>
@@ -673,7 +792,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                               </Pressable>
                             )}
                             <Pressable style={styles.timerActionBtn} onPress={() => handleResetTimer(index)}>
-                              <Text style={styles.timerActionText}>↺</Text>
+                              <Text style={styles.timerActionText}>â†º</Text>
                             </Pressable>
                           </View>
                         )}
@@ -686,7 +805,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* AÇÕES SECUNDÁRIAS */}
+        {/* AÃ‡Ã•ES SECUNDÃRIAS */}
         <View style={[styles.section, styles.secondaryActions]}>
           <Pressable
             style={[styles.outlineBtn, markingPrepared && { opacity: 0.6 }]}
@@ -703,19 +822,19 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               style={[styles.outlineBtn, duplicating && { opacity: 0.6 }]}
               onPress={handleSaveCopy}
               disabled={duplicating}
-              accessibilityLabel="Salvar cópia nas minhas receitas"
+              accessibilityLabel="Salvar cÃ³pia nas minhas receitas"
               accessibilityRole="button"
             >
               <Ionicons name="download-outline" size={18} color={colors.primary} />
-              <Text style={styles.outlineBtnText}>{duplicating ? "Salvando..." : "Salvar cópia"}</Text>
+              <Text style={styles.outlineBtnText}>{duplicating ? "Salvando..." : "Salvar cÃ³pia"}</Text>
             </Pressable>
           )}
         </View>
 
-        {/* RF21 — Avaliações */}
+        {/* RF21 â€” AvaliaÃ§Ãµes */}
         <View style={[styles.section, { marginBottom: 16 }]}>
           <View style={styles.reviewsHeader}>
-            <Text style={styles.reviewsSectionTitle}>Avaliações</Text>
+            <Text style={styles.reviewsSectionTitle}>AvaliaÃ§Ãµes</Text>
             {reviewCount > 0 && (
               <View style={styles.avgRow}>
                 <StarRating rating={avgRating} size={15} />
@@ -734,21 +853,21 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   onPress={() => setFilterRating(n)}
                 >
                   <Text style={[styles.starFilterText, filterRating === n && styles.starFilterTextActive]}>
-                    {n === 0 ? "Todas" : `${n}★`}
+                    {n === 0 ? "Todas" : `${n}â˜…`}
                   </Text>
                 </Pressable>
               ))}
             </View>
           )}
 
-          {/* Formulário — apenas para quem não é dono */}
+          {/* FormulÃ¡rio â€” apenas para quem nÃ£o Ã© dono */}
           {!isOwner && (
             <View style={[styles.card, styles.reviewForm]}>
-              <Text style={styles.reviewFormTitle}>Sua avaliação</Text>
+              <Text style={styles.reviewFormTitle}>Sua avaliaÃ§Ã£o</Text>
               <StarRating rating={myRating} interactive size={28} onRate={setMyRating} />
               <TextInput
                 style={styles.reviewInput}
-                placeholder="Comentário (opcional)"
+                placeholder="ComentÃ¡rio (opcional)"
                 placeholderTextColor={colors.textMuted}
                 value={myComment}
                 onChangeText={setMyComment}
@@ -759,19 +878,19 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                 style={[styles.outlineBtn, submittingReview && { opacity: 0.6 }]}
                 onPress={submitReview}
                 disabled={submittingReview}
-                accessibilityLabel="Enviar avaliação"
+                accessibilityLabel="Enviar avaliaÃ§Ã£o"
                 accessibilityRole="button"
               >
-                <Text style={styles.outlineBtnText}>{submittingReview ? "Enviando..." : "Enviar avaliação"}</Text>
+                <Text style={styles.outlineBtnText}>{submittingReview ? "Enviando..." : "Enviar avaliaÃ§Ã£o"}</Text>
               </Pressable>
             </View>
           )}
 
-          {/* Lista de avaliações */}
+          {/* Lista de avaliaÃ§Ãµes */}
           {loadingReviews ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
           ) : reviews.length === 0 ? (
-            <Text style={styles.noReviewsText}>Nenhuma avaliação ainda.</Text>
+            <Text style={styles.noReviewsText}>Nenhuma avaliaÃ§Ã£o ainda.</Text>
           ) : (
             reviews
               .filter((r) => filterRating === 0 || r.rating === filterRating)
@@ -801,7 +920,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         </Pressable>
       </View>
 
-      {/* RF18 — Modal de conversão de unidade */}
+      {/* RF18 â€” Modal de conversÃ£o de unidade */}
       <Modal visible={convertVisible} transparent animationType="slide" onRequestClose={() => setConvertVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setConvertVisible(false)} />
         <View style={styles.modalCard}>
@@ -853,7 +972,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
         <View style={styles.modalCard}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>⏱ Definir timer</Text>
+          <Text style={styles.modalTitle}>â± Definir timer</Text>
           <Text style={styles.modalSub}>Passo {modalStepIndex + 1}</Text>
           <View style={styles.pickerRow}>
             <WheelPicker items={HOURS_ITEMS} selectedIndex={selectedHours} onIndexChange={setSelectedHours} label="horas" />
@@ -876,148 +995,3 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
-  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  loadingText: { fontSize: 16, color: colors.textSecondary },
-
-  // Hero
-  hero: { width: "100%", height: 300, backgroundColor: "#1a1a1a" },
-  heroImage: { width: "100%", height: "100%" },
-  heroPlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "#2d2d2d" },
-  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)" },
-  heroHeader: {
-    position: "absolute", top: 0, left: 0, right: 0,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "android" ? 16 : 0,
-  },
-  heroHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
-  iconCircleSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
-
-  // Layout
-  section: { paddingHorizontal: 16, marginTop: 16 },
-
-  // Info
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary, lineHeight: 28, marginBottom: 10 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-  badge: { backgroundColor: colors.primaryLight, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  badgeText: { color: colors.primaryDark, fontWeight: "700", fontSize: 12 },
-  statsRow: { flexDirection: "row", alignItems: "center" },
-  statItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  statText: { fontSize: 14, color: colors.textSecondary },
-  statDivider: { width: 1, height: 14, backgroundColor: colors.border, marginHorizontal: 12 },
-
-  // Card
-  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
-
-  // Stepper
-  stepperRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  stepperLabel: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
-  stepperHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 14 },
-  stepperBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  stepperValue: { minWidth: 28, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-
-  // Tabs
-  tabsContainer: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: colors.border },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 10 },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontWeight: "600", fontSize: 14 },
-  tabTextActive: { color: "#fff", fontWeight: "700" },
-
-  // Ingredients
-  ingredientRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12 },
-  ingredientDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  ingredientQtyBox: { backgroundColor: colors.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, minWidth: 72, alignItems: "center" },
-  ingredientQtyText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
-  ingredientName: { flex: 1, color: colors.textPrimary, fontSize: 15 },
-
-  // Steps
-  stepCard: { flexDirection: "row", gap: 12, marginBottom: 10 },
-  stepNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  stepNumberText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  stepText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
-
-  // Timer
-  timerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" },
-  timerInitBtn: { marginTop: 10, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  timerInitText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
-  timerDisplay: { fontSize: 20, fontWeight: "700", color: colors.primary },
-  timerDone: { fontSize: 14, fontWeight: "700", color: colors.primary },
-  timerActionBtn: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
-  timerActionText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
-
-  // Secondary actions
-  secondaryActions: { flexDirection: "column", gap: 8, marginBottom: 8 },
-  outlineBtn: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.primary, paddingVertical: 13, borderRadius: 12 },
-  outlineBtnText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
-
-  // CTA
-  ctaBar: {
-    position: "absolute", left: 0, right: 0, bottom: 0,
-    flexDirection: "row", gap: 10,
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: Platform.OS === "ios" ? 32 : 16,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  ctaBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12,
-  },
-  ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  // Modal timer
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44 },
-  modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 99, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
-  modalSub: { fontSize: 13, color: colors.textSecondary, marginBottom: 20 },
-  pickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  pickerSep: { fontSize: 36, fontWeight: "700", color: colors.textPrimary, marginHorizontal: 4, marginTop: 20, lineHeight: 56 },
-  pickerPreview: { textAlign: "center", fontSize: 14, color: colors.textSecondary, marginBottom: 24, fontWeight: "500" },
-  modalBtns: { flexDirection: "row", gap: 12 },
-  modalCancel: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 15, alignItems: "center", borderWidth: 1, borderColor: colors.border },
-  modalCancelText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
-  modalConfirm: { flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
-  modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-
-  // RF21 — avaliações
-  authorName:         { fontSize: 13, color: colors.textSecondary, marginTop: 2, marginBottom: 4 },
-  reviewsHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  reviewsSectionTitle:{ fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  avgRow:             { flexDirection: "row", alignItems: "center", gap: 6 },
-  avgText:            { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
-  reviewForm:         { gap: 12, marginBottom: 12 },
-  reviewFormTitle:    { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
-  reviewInput:        { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, minHeight: 76, textAlignVertical: "top" },
-  noReviewsText:      { fontSize: 14, color: colors.textMuted, textAlign: "center", marginTop: 12 },
-  starFilterRow:      { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
-  starFilterBtn:      { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  starFilterBtnActive:{ borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  starFilterText:     { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
-  starFilterTextActive:{ color: colors.primaryDark, fontWeight: "700" },
-  reviewCard:         { marginTop: 10, gap: 4 },
-  reviewCardHeader:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  reviewAuthor:       { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
-  reviewComment:      { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  reviewDate:         { fontSize: 11, color: colors.textMuted },
-
-  // RF18 — conversão de unidades
-  convertBtn: { paddingHorizontal: 2, paddingVertical: 4 },
-  convertCurrentRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surfaceAlt, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16, width: "100%" },
-  convertCurrentLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
-  convertCurrentValue: { fontSize: 15, color: colors.textPrimary, fontWeight: "700" },
-  convertPickerLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: "600", alignSelf: "flex-start", marginBottom: 10 },
-  convertPills: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
-  convertPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-  convertPillActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  convertPillText: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
-  convertPillTextActive: { color: colors.primaryDark, fontWeight: "700" },
-  convertResultBox: { width: "100%", minHeight: 60, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceAlt, borderRadius: 12, marginBottom: 20, paddingVertical: 14 },
-  convertResultLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", marginBottom: 2 },
-  convertResultValue: { fontSize: 24, color: colors.primary, fontWeight: "700" },
-  convertResultHint: { fontSize: 13, color: colors.textMuted },
-});

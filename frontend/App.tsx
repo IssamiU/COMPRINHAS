@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppNavigator, { navigationRef } from "./src/navigation";
 import { store, persistor } from "./src/store";
 import AuthBootstrap from "./src/components/AuthBootstrap";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 
 // RF14 — handler de deep links (mealsync://recipe/:id)
 function handleDeepLink(url: string) {
@@ -21,6 +22,17 @@ function handleDeepLink(url: string) {
       params: { recipeId },
     });
   }
+}
+
+// RF23 — StatusBar muda de estilo conforme o tema claro/escuro
+function ThemedContent() {
+  const { isDark } = useTheme();
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <AppNavigator />
+    </>
+  );
 }
 
 export default function App() {
@@ -40,10 +52,11 @@ export default function App() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <SafeAreaProvider>
-          <AuthBootstrap>
-            <StatusBar style="auto" />
-            <AppNavigator />
-          </AuthBootstrap>
+          <ThemeProvider>
+            <AuthBootstrap>
+              <ThemedContent />
+            </AuthBootstrap>
+          </ThemeProvider>
         </SafeAreaProvider>
       </PersistGate>
     </Provider>

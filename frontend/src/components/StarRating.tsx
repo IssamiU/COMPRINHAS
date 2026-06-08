@@ -2,7 +2,8 @@
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../theme/ThemeContext";
 
 type Props = {
   rating: number;
@@ -19,6 +20,7 @@ export default function StarRating({
   interactive = false,
   onRate,
 }: Props) {
+  const { colors } = useTheme();
   return (
     <View style={styles.row}>
       {Array.from({ length: maxStars }, (_, i) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 interface SuggestedRecipe {
   id: string;
@@ -36,6 +37,7 @@ const SCOPES: { key: Scope; label: string }[] = [
 ];
 
 export default function SuggestByIngredientsScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [input, setInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [results, setResults] = useState<SuggestedRecipe[]>([]);
@@ -91,6 +93,50 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
       setLoading(false);
     }
   }
+
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    container: { flex: 1, backgroundColor: colors.background },
+    listContent: { padding: 20, paddingBottom: 40 },
+    headerCard: { marginBottom: 20, alignItems: "center" },
+    title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary, textAlign: "center" },
+    subtitle: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, textAlign: "center" },
+    inputRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+    input: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15 },
+    addTagButton: { backgroundColor: colors.primary, borderRadius: 12, width: 52, alignItems: "center", justifyContent: "center" },
+    addTagButtonText: { color: "#fff", fontSize: 24, fontWeight: "700" },
+    tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+    tag: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
+    tagText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
+    tagRemove: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
+    scopeLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, marginBottom: 8, letterSpacing: 0.5 },
+    scopeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+    scopeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: "center" },
+    scopeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    scopeText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    scopeTextActive: { color: colors.primaryDark, fontWeight: "700" },
+    searchButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: "center", marginBottom: 20 },
+    searchButtonDisabled: { opacity: 0.5 },
+    searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    resultsHeader: { fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 12 },
+    emptyCard: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 24, alignItems: "center" },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 },
+    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 14 },
+    cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4, gap: 8 },
+    cardTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+    cardAuthor: { fontSize: 12, color: colors.textMuted, marginBottom: 6 },
+    matchBadge: { backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
+    matchBadgeText: { color: colors.primaryDark, fontWeight: "700", fontSize: 11 },
+    categoryBadge: { alignSelf: "flex-start", backgroundColor: colors.surfaceAlt, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 8 },
+    categoryBadgeText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
+    cardMeta: { fontSize: 13, color: colors.textSecondary, marginBottom: 10 },
+    progressBar: { height: 4, backgroundColor: colors.border, borderRadius: 99, overflow: "hidden" },
+    progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 99 },
+  }), [colors]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -231,47 +277,3 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  container: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: 20, paddingBottom: 40 },
-  headerCard: { marginBottom: 20, alignItems: "center" },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary, textAlign: "center" },
-  subtitle: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, textAlign: "center" },
-  inputRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  input: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15 },
-  addTagButton: { backgroundColor: colors.primary, borderRadius: 12, width: 52, alignItems: "center", justifyContent: "center" },
-  addTagButtonText: { color: "#fff", fontSize: 24, fontWeight: "700" },
-  tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
-  tag: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
-  tagText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
-  tagRemove: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
-  scopeLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, marginBottom: 8, letterSpacing: 0.5 },
-  scopeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  scopeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: "center" },
-  scopeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  scopeText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
-  scopeTextActive: { color: colors.primaryDark, fontWeight: "700" },
-  searchButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: "center", marginBottom: 20 },
-  searchButtonDisabled: { opacity: 0.5 },
-  searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  resultsHeader: { fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 12 },
-  emptyCard: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 24, alignItems: "center" },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 },
-  emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
-  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 14 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4, gap: 8 },
-  cardTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  cardAuthor: { fontSize: 12, color: colors.textMuted, marginBottom: 6 },
-  matchBadge: { backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
-  matchBadgeText: { color: colors.primaryDark, fontWeight: "700", fontSize: 11 },
-  categoryBadge: { alignSelf: "flex-start", backgroundColor: colors.surfaceAlt, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 8 },
-  categoryBadgeText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
-  cardMeta: { fontSize: 13, color: colors.textSecondary, marginBottom: 10 },
-  progressBar: { height: 4, backgroundColor: colors.border, borderRadius: 99, overflow: "hidden" },
-  progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 99 },
-});

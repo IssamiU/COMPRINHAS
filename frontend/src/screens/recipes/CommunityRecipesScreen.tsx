@@ -1,5 +1,5 @@
 // RF21 — Tela de receitas públicas da comunidade com filtros e paginação
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,11 +18,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 const CATEGORIES = ["Todas", "Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa", "Outro"];
 
 export default function CommunityRecipesScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [recipes, setRecipes]           = useState<any[]>([]);
   const [loading, setLoading]           = useState(true);
   const [loadingMore, setLoadingMore]   = useState(false);
@@ -97,6 +99,42 @@ export default function CommunityRecipesScreen({ navigation }: any) {
           (r.authorName ?? "").toLowerCase().includes(search.toLowerCase())
       )
     : recipes;
+
+  const styles = useMemo(() => StyleSheet.create({
+    safe:    { flex: 1, backgroundColor: colors.background },
+    header:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+    backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
+    searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
+    searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },
+    filtersScroll: { flexGrow: 0, marginBottom: 8 },
+    filtersContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 8, flexDirection: "row", alignItems: "center" },
+    chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipFav: { backgroundColor: "#FEE2E2", borderColor: "#EF4444" },
+    chipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    chipTextActive: { color: "#fff" },
+    chipTextFav: { color: "#EF4444" },
+    center:  { flex: 1, alignItems: "center", justifyContent: "center" },
+    listContent: { paddingHorizontal: 20, paddingBottom: 24 },
+    card: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 16, marginBottom: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, minHeight: 110 },
+    cardImage: { width: 90, height: 120, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+    cardImageReal: { width: 90, height: 120 },
+    cardContent: { flex: 1, padding: 12 },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 },
+    cardTitle:  { flex: 1, fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginRight: 8 },
+    cardAuthor: { fontSize: 12, color: colors.textMuted, marginBottom: 6 },
+    badge:     { alignSelf: "flex-start", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, marginBottom: 6 },
+    badgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
+    cardMeta:  { flexDirection: "row", alignItems: "center", gap: 4 },
+    cardMetaText: { fontSize: 12, color: colors.textMuted },
+    dot: { fontSize: 12, color: colors.textMuted },
+    emptyWrapper: { alignItems: "center", paddingTop: 60, gap: 8 },
+    emptyTitle:   { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+    emptyText:    { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 20 },
+    loadMoreBtn: { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+    loadMoreText: { fontSize: 14, fontWeight: "700", color: colors.primary },
+  }), [colors]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -242,39 +280,3 @@ export default function CommunityRecipesScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: colors.background },
-  header:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
-  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },
-  filtersScroll: { flexGrow: 0, marginBottom: 8 },
-  filtersContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 8, flexDirection: "row", alignItems: "center" },
-  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipFav: { backgroundColor: "#FEE2E2", borderColor: "#EF4444" },
-  chipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-  chipTextActive: { color: "#fff" },
-  chipTextFav: { color: "#EF4444" },
-  center:  { flex: 1, alignItems: "center", justifyContent: "center" },
-  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  card: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 16, marginBottom: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, minHeight: 110 },
-  cardImage: { width: 90, height: 120, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  cardImageReal: { width: 90, height: 120 },
-  cardContent: { flex: 1, padding: 12 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 },
-  cardTitle:  { flex: 1, fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginRight: 8 },
-  cardAuthor: { fontSize: 12, color: colors.textMuted, marginBottom: 6 },
-  badge:     { alignSelf: "flex-start", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, marginBottom: 6 },
-  badgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
-  cardMeta:  { flexDirection: "row", alignItems: "center", gap: 4 },
-  cardMetaText: { fontSize: 12, color: colors.textMuted },
-  dot: { fontSize: 12, color: colors.textMuted },
-  emptyWrapper: { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyTitle:   { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  emptyText:    { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 20 },
-  loadMoreBtn: { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
-  loadMoreText: { fontSize: 14, fontWeight: "700", color: colors.primary },
-});

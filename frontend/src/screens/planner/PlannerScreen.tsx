@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -19,7 +19,8 @@ import * as Notifications from "expo-notifications";
 import { RootState } from "../../store";
 import { addPlannedMeal, removePlannedMeal, updateMealReminder } from "../../store/slices/plannerSlice";
 import { MealType, PlannedMeal, WeekDay } from "../../types/planner";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 const DAYS: WeekDay[] = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const MEAL_TYPES: MealType[] = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Outros"];
@@ -38,26 +39,34 @@ const DAY_OF_WEEK: Record<WeekDay, number> = {
 };
 
 const MEAL_ICONS: Record<MealType, string> = {
-  "Café da manhã": "☕",
-  "Almoço": "🍽️",
-  "Lanche": "🥪",
-  "Jantar": "🌙",
-  "Outros": "✨",
+  "Café da manhã": "☕", "Almoço": "🍽️", "Lanche": "🥪", "Jantar": "🌙", "Outros": "✨",
 };
 
 const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-const HOURS_LIST = Array.from({ length: 24 }, (_, i) => i);
+const HOURS_LIST   = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES_LIST = Array.from({ length: 60 }, (_, i) => i);
 
+// RF23 — WheelPicker usa useTheme() internamente para reagir ao tema
 function WheelPicker({ items, selectedIndex, onIndexChange, label }: {
   items: number[];
   selectedIndex: number;
   onIndexChange: (i: number) => void;
   label: string;
 }) {
+  const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+
+  const wheelStyles = useMemo(() => StyleSheet.create({
+    wrapper:       { flex: 1, alignItems: "center" },
+    label:         { fontSize: 12, fontWeight: "600", color: colors.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+    container:     { height: PICKER_HEIGHT, width: "100%", overflow: "hidden", position: "relative" },
+    item:          { height: ITEM_HEIGHT, alignItems: "center", justifyContent: "center" },
+    text:          { fontSize: 28, fontWeight: "300", color: colors.textSecondary, opacity: 0.4 },
+    textSelected:  { fontSize: 40, fontWeight: "700", color: colors.textPrimary, opacity: 1 },
+    line:          { position: "absolute", left: 12, right: 12, height: 1, backgroundColor: colors.border, zIndex: 10 },
+  }), [colors]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -101,33 +110,24 @@ function WheelPicker({ items, selectedIndex, onIndexChange, label }: {
   );
 }
 
-const wheelStyles = StyleSheet.create({
-  wrapper: { flex: 1, alignItems: "center" },
-  label: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  container: { height: PICKER_HEIGHT, width: "100%", overflow: "hidden", position: "relative" },
-  item: { height: ITEM_HEIGHT, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 28, fontWeight: "300", color: colors.textSecondary, opacity: 0.4 },
-  textSelected: { fontSize: 40, fontWeight: "700", color: colors.textPrimary, opacity: 1 },
-  line: { position: "absolute", left: 12, right: 12, height: 1, backgroundColor: colors.border, zIndex: 10 },
-});
-
 type ModalStep = "mealType" | "recipe";
 
 export default function PlannerScreen() {
+  const { colors } = useTheme();
   const dispatch = useDispatch();
   const recipes = useSelector((state: RootState) => state.recipes.recipes);
   const plannedMeals = useSelector((state: RootState) => state.planner.plannedMeals);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalStep, setModalStep] = useState<ModalStep>("mealType");
-  const [selectedDay, setSelectedDay] = useState<WeekDay | null>(null);
-  const [selectedMealType, setSelectedMealType] = useState<MealType | null>(null);
-  const [pendingMealId, setPendingMealId] = useState<string | null>(null);
-  const [pendingRecipeTitle, setPendingRecipeTitle] = useState<string>("");
+  const [modalVisible,         setModalVisible]         = useState(false);
+  const [modalStep,            setModalStep]            = useState<ModalStep>("mealType");
+  const [selectedDay,          setSelectedDay]          = useState<WeekDay | null>(null);
+  const [selectedMealType,     setSelectedMealType]     = useState<MealType | null>(null);
+  const [pendingMealId,        setPendingMealId]        = useState<string | null>(null);
+  const [pendingRecipeTitle,   setPendingRecipeTitle]   = useState<string>("");
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
-  const [editingMealId, setEditingMealId] = useState<string | null>(null);
-  const [selectedHour, setSelectedHour] = useState(0);
-  const [selectedMinute, setSelectedMinute] = useState(0);
+  const [editingMealId,        setEditingMealId]        = useState<string | null>(null);
+  const [selectedHour,         setSelectedHour]         = useState(0);
+  const [selectedMinute,       setSelectedMinute]       = useState(0);
 
   useEffect(() => { Notifications.requestPermissionsAsync(); }, []);
 
@@ -141,16 +141,10 @@ export default function PlannerScreen() {
 
   function openAddMeal(day: WeekDay) {
     if (recipes.length === 0) { Alert.alert("Atenção", "Cadastre pelo menos uma receita antes de montar o planejamento."); return; }
-    setSelectedDay(day);
-    setSelectedMealType(null);
-    setModalStep("mealType");
-    setModalVisible(true);
+    setSelectedDay(day); setSelectedMealType(null); setModalStep("mealType"); setModalVisible(true);
   }
 
-  function handleSelectMealType(mealType: MealType) {
-    setSelectedMealType(mealType);
-    setModalStep("recipe");
-  }
+  function handleSelectMealType(mealType: MealType) { setSelectedMealType(mealType); setModalStep("recipe"); }
 
   function handleSelectRecipe(recipeId: string) {
     if (!selectedDay || !selectedMealType) return;
@@ -163,12 +157,8 @@ export default function PlannerScreen() {
       { text: "Agora não", style: "cancel" },
       { text: "Definir horário", onPress: () => {
         const defaults = MEAL_DEFAULT_HOURS[selectedMealType!];
-        setSelectedHour(defaults.hour);
-        setSelectedMinute(defaults.minute);
-        setPendingMealId(mealId);
-        setPendingRecipeTitle(recipeTitle);
-        setEditingMealId(null);
-        setReminderModalVisible(true);
+        setSelectedHour(defaults.hour); setSelectedMinute(defaults.minute);
+        setPendingMealId(mealId); setPendingRecipeTitle(recipeTitle); setEditingMealId(null); setReminderModalVisible(true);
       }},
     ]);
   }
@@ -177,10 +167,7 @@ export default function PlannerScreen() {
     const recipe = recipes.find((r) => r.id === meal.recipeId);
     setSelectedHour(meal.reminderTime?.hour ?? MEAL_DEFAULT_HOURS[meal.mealType].hour);
     setSelectedMinute(meal.reminderTime?.minute ?? MEAL_DEFAULT_HOURS[meal.mealType].minute);
-    setEditingMealId(meal.id);
-    setPendingMealId(null);
-    setPendingRecipeTitle(recipe?.title ?? "receita");
-    setReminderModalVisible(true);
+    setEditingMealId(meal.id); setPendingMealId(null); setPendingRecipeTitle(recipe?.title ?? "receita"); setReminderModalVisible(true);
   }
 
   async function confirmReminder() {
@@ -218,10 +205,54 @@ export default function PlannerScreen() {
   function sortMeals(meals: typeof plannedMeals) { return [...meals].sort((a, b) => MEAL_TYPES.indexOf(a.mealType) - MEAL_TYPES.indexOf(b.mealType)); }
   function formatTime(h: number, m: number) { return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`; }
 
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    container: { paddingHorizontal: 20, paddingBottom: 32 },
+    header: { paddingTop: 16, marginBottom: 20 },
+    headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
+    dayCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: colors.border },
+    dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    dayTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+    addButton: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primaryLight, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+    addButtonText: { fontSize: 13, fontWeight: "700", color: colors.primary },
+    emptyDay: { fontSize: 13, color: colors.textMuted, fontStyle: "italic" },
+    mealRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderRadius: 12, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: colors.borderLight },
+    mealIcon: { fontSize: 20, marginRight: 10 },
+    mealInfo: { flex: 1 },
+    mealType: { fontSize: 11, fontWeight: "700", color: colors.primary, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    mealRecipe: { fontSize: 14, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
+    reminderRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+    reminderText: { fontSize: 11, color: colors.primary, fontWeight: "600" },
+    reminderAction: { fontSize: 11, color: colors.primary, fontWeight: "600", textDecorationLine: "underline" },
+    reminderAdd: { fontSize: 11, color: colors.textMuted, marginTop: 2, textDecorationLine: "underline" },
+    removeButton: { padding: 4 },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+    modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44, maxHeight: "80%" },
+    reminderCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44 },
+    modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 99, alignSelf: "center", marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
+    modalSub: { fontSize: 14, color: colors.textSecondary, marginBottom: 16 },
+    optionBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+    optionIcon: { fontSize: 20, marginRight: 12 },
+    optionText: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+    recipeItem: { backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+    recipeItemTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
+    recipeItemMeta: { fontSize: 13, color: colors.textSecondary },
+    backBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center", marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+    backBtnText: { color: colors.primary, fontWeight: "700", fontSize: 15 },
+    cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    cancelBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
+    confirmBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center", backgroundColor: colors.primary },
+    confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    pickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 },
+    pickerSep: { fontSize: 36, fontWeight: "700", color: colors.textPrimary, marginHorizontal: 4, marginTop: 20, lineHeight: 56 },
+    pickerPreview: { textAlign: "center", fontSize: 14, color: colors.textSecondary, marginBottom: 20, fontWeight: "500" },
+    reminderBtns: { flexDirection: "row", gap: 12 },
+  }), [colors]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Planejamento</Text>
         </View>
@@ -237,7 +268,6 @@ export default function PlannerScreen() {
                   <Text style={styles.addButtonText}>Adicionar</Text>
                 </Pressable>
               </View>
-
               {dayMeals.length === 0 ? (
                 <Text style={styles.emptyDay}>Nenhuma refeição planejada</Text>
               ) : (
@@ -251,12 +281,8 @@ export default function PlannerScreen() {
                         <View style={styles.reminderRow}>
                           <Ionicons name="notifications" size={11} color={colors.primary} />
                           <Text style={styles.reminderText}>{formatTime(meal.reminderTime.hour, meal.reminderTime.minute)}</Text>
-                          <Pressable onPress={() => handleEditReminder(meal)}>
-                            <Text style={styles.reminderAction}>Editar</Text>
-                          </Pressable>
-                          <Pressable onPress={() => cancelReminder(meal)}>
-                            <Text style={[styles.reminderAction, { color: colors.danger }]}>Remover</Text>
-                          </Pressable>
+                          <Pressable onPress={() => handleEditReminder(meal)}><Text style={styles.reminderAction}>Editar</Text></Pressable>
+                          <Pressable onPress={() => cancelReminder(meal)}><Text style={[styles.reminderAction, { color: colors.danger }]}>Remover</Text></Pressable>
                         </View>
                       ) : (
                         <Pressable onPress={() => handleEditReminder(meal)}>
@@ -275,7 +301,6 @@ export default function PlannerScreen() {
         })}
       </ScrollView>
 
-      {/* Modal tipo refeição / receita */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -322,7 +347,6 @@ export default function PlannerScreen() {
         </View>
       </Modal>
 
-      {/* Modal lembrete */}
       <Modal visible={reminderModalVisible} animationType="slide" transparent onRequestClose={() => setReminderModalVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setReminderModalVisible(false)} />
         <View style={styles.reminderCard}>
@@ -330,7 +354,7 @@ export default function PlannerScreen() {
           <Text style={styles.modalTitle}>{editingMealId ? "Editar lembrete" : "Definir lembrete"}</Text>
           <Text style={styles.modalSub}>{pendingRecipeTitle}</Text>
           <View style={styles.pickerRow}>
-            <WheelPicker items={HOURS_LIST} selectedIndex={selectedHour} onIndexChange={setSelectedHour} label="hora" />
+            <WheelPicker items={HOURS_LIST}   selectedIndex={selectedHour}   onIndexChange={setSelectedHour}   label="hora" />
             <Text style={styles.pickerSep}>:</Text>
             <WheelPicker items={MINUTES_LIST} selectedIndex={selectedMinute} onIndexChange={setSelectedMinute} label="minuto" />
           </View>
@@ -348,48 +372,3 @@ export default function PlannerScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { paddingHorizontal: 20, paddingBottom: 32 },
-  header: { paddingTop: 16, marginBottom: 20 },
-  headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
-  dayCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: colors.border },
-  dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  dayTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
-  addButton: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primaryLight, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
-  addButtonText: { fontSize: 13, fontWeight: "700", color: colors.primary },
-  emptyDay: { fontSize: 13, color: colors.textMuted, fontStyle: "italic" },
-  mealRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderRadius: 12, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: colors.borderLight },
-  mealIcon: { fontSize: 20, marginRight: 10 },
-  mealInfo: { flex: 1 },
-  mealType: { fontSize: 11, fontWeight: "700", color: colors.primary, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
-  mealRecipe: { fontSize: 14, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
-  reminderRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
-  reminderText: { fontSize: 11, color: colors.primary, fontWeight: "600" },
-  reminderAction: { fontSize: 11, color: colors.primary, fontWeight: "600", textDecorationLine: "underline" },
-  reminderAdd: { fontSize: 11, color: colors.textMuted, marginTop: 2, textDecorationLine: "underline" },
-  removeButton: { padding: 4 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44, maxHeight: "80%" },
-  reminderCard: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44 },
-  modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 99, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
-  modalSub: { fontSize: 14, color: colors.textSecondary, marginBottom: 16 },
-  optionBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
-  optionIcon: { fontSize: 20, marginRight: 12 },
-  optionText: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.textPrimary },
-  recipeItem: { backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
-  recipeItemTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
-  recipeItemMeta: { fontSize: 13, color: colors.textSecondary },
-  backBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center", marginBottom: 8, borderWidth: 1, borderColor: colors.border },
-  backBtnText: { color: colors.primary, fontWeight: "700", fontSize: 15 },
-  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  cancelBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
-  confirmBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center", backgroundColor: colors.primary },
-  confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  pickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  pickerSep: { fontSize: 36, fontWeight: "700", color: colors.textPrimary, marginHorizontal: 4, marginTop: 20, lineHeight: 56 },
-  pickerPreview: { textAlign: "center", fontSize: 14, color: colors.textSecondary, marginBottom: 20, fontWeight: "500" },
-  reminderBtns: { flexDirection: "row", gap: 12 },
-});
