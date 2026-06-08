@@ -4,6 +4,7 @@ export type ShoppingListItem = {
   quantity: number;
   unit: string;
   checked: boolean;
+  category?: string;
 };
 
 export type ShoppingList = {
@@ -11,4 +12,5 @@ export type ShoppingList = {
   name: string;
   createdAt: string; // ISO string
   items: ShoppingListItem[];
+  customCategories?: string[];
 };

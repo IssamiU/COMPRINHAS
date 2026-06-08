@@ -23,7 +23,10 @@ export interface IRecipe extends Document {
   steps: Step[];
   imageUrl?: string;
   isFavorite: boolean;
+  isPublic: boolean;
+  authorName: string;
   userId: string;
+  savedBy: string[];
   createdAt: Date;
 }
 
@@ -50,7 +53,10 @@ const RecipeSchema = new Schema<IRecipe>({
   steps: [StepSchema],
   imageUrl: { type: String, default: "" },
   isFavorite: { type: Boolean, default: false },
+  isPublic: { type: Boolean, default: false },
+  authorName: { type: String, default: "" },
   userId: { type: String, required: true },
+  savedBy: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 

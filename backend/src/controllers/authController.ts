@@ -1,12 +1,19 @@
 import bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 import type { Request, Response } from "express";
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 
 import { pool } from "../config/database";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+// RF29 — transporte de e-mail via Gmail (App Password)
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function register(req: Request, res: Response) {
   try {
@@ -95,17 +102,84 @@ export async function login(req: Request, res: Response) {
         id: user.id,
         name: user.name,
         email: user.email,
-        preferences: {
-          vegetarian: user.vegetarian,
-          glutenFree: user.gluten_free,
-          lactoseFree: user.lactose_free,
-        },
+        preferences: user.preferences || {},
+        avatarUrl: user.avatar_url ?? null,
       },
       accessToken,
       refreshToken,
     });
   } catch (error) {
     return res.status(500).json({ message: "Erro ao realizar login.", error });
+  }
+}
+
+// Busca perfil do usuário logado
+export async function getMe(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId;
+    const result = await pool.query(
+      "SELECT id, name, email, preferences, avatar_url FROM users WHERE id = $1",
+      [userId]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Usuário não encontrado" });
+    const u = result.rows[0];
+    return res.json({ id: u.id, name: u.name, email: u.email, preferences: u.preferences || {}, avatarUrl: u.avatar_url ?? null });
+  } catch (error) {
+    return res.status(500).json({ message: "Erro ao buscar perfil" });
+  }
+}
+
+// Atualiza nome, e-mail, senha e/ou preferências do usuário logado
+export async function updateMe(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId;
+    const { name, email, currentPassword, newPassword, preferences, avatarUrl } = req.body;
+
+    if (!name?.trim()) return res.status(400).json({ message: "Nome não pode estar vazio" });
+    if (!email?.trim()) return res.status(400).json({ message: "E-mail não pode estar vazio" });
+
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+    if (!result.rows.length) return res.status(404).json({ message: "Usuário não encontrado" });
+    const user = result.rows[0];
+
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ message: "Informe a senha atual" });
+      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!valid) return res.status(400).json({ message: "Senha atual incorreta" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "Nova senha deve ter pelo menos 6 caracteres" });
+      const hash = await bcrypt.hash(newPassword, 10);
+      await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, userId]);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail !== user.email) {
+      const existing = await pool.query(
+        "SELECT id FROM users WHERE email = $1 AND id != $2",
+        [normalizedEmail, userId]
+      );
+      if (existing.rows.length > 0) return res.status(409).json({ message: "E-mail já em uso" });
+    }
+
+    // Monta UPDATE dinâmico com os campos disponíveis
+    const fields: string[] = ["name = $1", "email = $2"];
+    const values: any[]    = [name.trim(), normalizedEmail];
+    let   idx              = 3;
+
+    if (preferences !== undefined) { fields.push(`preferences = $${idx++}`); values.push(JSON.stringify(preferences)); }
+    if (avatarUrl !== undefined)   { fields.push(`avatar_url = $${idx++}`);  values.push(avatarUrl); }
+    values.push(userId);
+
+    await pool.query(`UPDATE users SET ${fields.join(", ")} WHERE id = $${idx}`, values);
+
+    const updated = await pool.query(
+      "SELECT id, name, email, preferences, avatar_url FROM users WHERE id = $1",
+      [userId]
+    );
+    const u = updated.rows[0];
+    return res.json({ user: { id: u.id, name: u.name, email: u.email, preferences: u.preferences || {}, avatarUrl: u.avatar_url ?? null } });
+  } catch (error) {
+    console.error("Erro ao atualizar perfil:", error);
+    return res.status(500).json({ message: "Erro ao atualizar dados" });
   }
 }
 
@@ -144,9 +218,9 @@ export async function forgotPassword(req: Request, res: Response) {
       [user.id, token]
     );
 
-    await sgMail.send({
+    await mailer.sendMail({
       to: email,
-      from: process.env.SENDGRID_FROM_EMAIL!,
+      from: process.env.GMAIL_USER,
       subject: "Redefinição de senha — MealSync",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
@@ -166,8 +240,8 @@ export async function forgotPassword(req: Request, res: Response) {
     return res.status(200).json({
       message: "Se este e-mail estiver cadastrado, você receberá as instruções em breve.",
     });
-  } catch (error) {
-    console.error("Erro ao enviar e-mail de recuperação:", error);
+  } catch (error: any) {
+    console.error("Erro ao enviar e-mail de recuperação:", error?.message ?? error);
     return res.status(500).json({ message: "Erro ao processar solicitação." });
   }
 }

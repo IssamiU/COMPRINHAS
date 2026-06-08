@@ -5,6 +5,7 @@ node_modules/
 .vscode/
 .idea/
 
+
 # Expo
 .expo/
 dist/
@@ -38,6 +39,8 @@ yarn-error.*
 
 backend/.env
 frontend/.env
+CLAUDE.md
+JOURNAL.md
 
 # typescript
 *.tsbuildinfo

@@ -16,6 +16,7 @@ export type RecipesStackParamList = {
   EditRecipe: { recipeId: string };
   SuggestByIngredients: undefined;
   History: undefined;
+  CommunityRecipes: undefined;
 };
 
 export type PlannerStackParamList = {
@@ -25,6 +26,8 @@ export type PlannerStackParamList = {
 export type ShoppingStackParamList = {
   ShoppingLists: undefined;
   ShoppingList: { listId: string };
+  BarcodeScanner: { listId: string };
+  SupermarketsMap: undefined;
 };
 
 export type ProfileStackParamList = {

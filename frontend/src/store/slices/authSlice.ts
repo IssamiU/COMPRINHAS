@@ -4,6 +4,8 @@ type User = {
   id: number | string;
   name: string;
   email: string;
+  preferences?: Record<string, any>;
+  avatarUrl?: string | null;
 };
 
 type AuthPayload = {
@@ -59,10 +61,16 @@ const authSlice = createSlice({
     finishAuthLoading: (state) => {
       state.isLoading = false;
     },
+
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
   },
 });
 
-export const { signIn, restoreSession, signOut, finishAuthLoading } =
+export const { signIn, restoreSession, signOut, finishAuthLoading, updateUser } =
   authSlice.actions;
 
 export default authSlice.reducer;

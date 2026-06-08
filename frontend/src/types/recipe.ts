@@ -30,4 +30,7 @@ export type Recipe = {
   category: RecipeCategory;
   imageUrl?: string;
   isFavorite: boolean;
+  isPublic?: boolean;
+  authorName?: string;
+  userId?: string;
 };

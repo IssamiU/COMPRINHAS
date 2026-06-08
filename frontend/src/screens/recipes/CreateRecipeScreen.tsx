@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -18,7 +18,8 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { pickImage, uploadImage } from "../../services/imageService";
-import { colors } from "../../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 const CATEGORIES = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa", "Outro"];
 const UNITS = [
@@ -33,6 +34,7 @@ interface Ingredient { id: string; qty: string; unit: string; name: string; }
 interface Step { id: string; text: string; hasTimer: boolean; }
 
 export default function CreateRecipeScreen({ navigation, route }: any) {
+  const { colors } = useTheme();
   const prefill = route?.params?.prefill;
 
   const [imageUri,  setImageUri]  = useState<string | null>(null);
@@ -136,10 +138,65 @@ export default function CreateRecipeScreen({ navigation, route }: any) {
 
   const displayImage = imageUri || imageUrl || null;
 
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    container: { paddingHorizontal: 16, paddingBottom: 40 },
+    imagePicker: { marginTop: 16, borderRadius: 16, borderWidth: 2, borderColor: colors.primary, borderStyle: "dashed", backgroundColor: colors.primaryLight + "40", minHeight: 160, overflow: "hidden" },
+    imagePreview: { width: "100%", height: 200 },
+    imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+    imageOverlayText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    imageChangeBtn: { position: "absolute", bottom: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12 },
+    imageChangeBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+    imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
+    imageIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+    imageTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    imageHint: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 4 },
+    toggleRow: { flexDirection: "row", alignItems: "center" },
+    toggleTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+    toggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+    sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 20, marginBottom: 8 },
+    sectionLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, letterSpacing: 0.8 },
+    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, marginTop: 4 },
+    input: { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: Platform.OS === "ios" ? 12 : 10, fontSize: 15, color: colors.textPrimary },
+    textarea: { minHeight: 90, textAlignVertical: "top" },
+    rowGap: { flexDirection: "row", gap: 12, marginTop: 4 },
+    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+    chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+    chipText: { color: colors.textSecondary, fontSize: 13, fontWeight: "500" },
+    chipTextActive: { color: colors.primaryDark, fontWeight: "700" },
+    addBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.primaryLight },
+    addBtnText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
+    ingredientItem: { paddingVertical: 10 },
+    itemDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    ingredientGrid: { flexDirection: "row", gap: 8, alignItems: "center" },
+    selectInput: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    selectText: { color: colors.textPrimary, fontSize: 14, flex: 1 },
+    trashBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" },
+    stepHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+    stepNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    stepNumberText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+    stepTitle: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+    timerToggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
+    ctaBar: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Platform.OS === "ios" ? 32 : 16, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+    ctaBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12 },
+    ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+    modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
+    modalHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 },
+    modalTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginBottom: 12 },
+    modalOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    modalOptionText: { fontSize: 15, color: colors.textPrimary },
+  }), [colors]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable style={styles.headerBtn} onPress={() => navigation.goBack()}>
+        <Pressable style={styles.headerBtn} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Nova Receita</Text>
@@ -275,7 +332,7 @@ export default function CreateRecipeScreen({ navigation, route }: any) {
 
       {/* CTA fixo */}
       <View style={styles.ctaBar}>
-        <Pressable style={[styles.ctaBtn, (saving || uploading) && { opacity: 0.7 }]} onPress={handleSave} disabled={saving || uploading}>
+        <Pressable style={[styles.ctaBtn, (saving || uploading) && { opacity: 0.7 }]} onPress={handleSave} disabled={saving || uploading} accessibilityRole="button" accessibilityLabel="Salvar receita">
           <Feather name="check" size={18} color="#fff" />
           <Text style={styles.ctaBtnText}>{saving ? "Salvando..." : uploading ? "Enviando imagem..." : "Salvar Receita"}</Text>
         </Pressable>
@@ -299,60 +356,3 @@ export default function CreateRecipeScreen({ navigation, route }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  container: { paddingHorizontal: 16, paddingBottom: 40 },
-  // Imagem
-  imagePicker: { marginTop: 16, borderRadius: 16, borderWidth: 2, borderColor: colors.primary, borderStyle: "dashed", backgroundColor: colors.primaryLight + "40", minHeight: 160, overflow: "hidden" },
-  imagePreview: { width: "100%", height: 200 },
-  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
-  imageOverlayText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  imageChangeBtn: { position: "absolute", bottom: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12 },
-  imageChangeBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
-  imageIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  imageTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
-  imageHint: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  // Card
-  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 4 },
-  toggleRow: { flexDirection: "row", alignItems: "center" },
-  toggleTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
-  toggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 20, marginBottom: 8 },
-  sectionLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, letterSpacing: 0.8 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, marginTop: 4 },
-  input: { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: Platform.OS === "ios" ? 12 : 10, fontSize: 15, color: colors.textPrimary },
-  textarea: { minHeight: 90, textAlignVertical: "top" },
-  rowGap: { flexDirection: "row", gap: 12, marginTop: 4 },
-  chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipText: { color: colors.textSecondary, fontSize: 13, fontWeight: "500" },
-  chipTextActive: { color: colors.primaryDark, fontWeight: "700" },
-  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.primaryLight },
-  addBtnText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
-  ingredientItem: { paddingVertical: 10 },
-  itemDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  ingredientGrid: { flexDirection: "row", gap: 8, alignItems: "center" },
-  selectInput: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectText: { color: colors.textPrimary, fontSize: 14, flex: 1 },
-  trashBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" },
-  stepHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  stepNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  stepNumberText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  stepTitle: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.textPrimary },
-  timerToggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
-  ctaBar: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Platform.OS === "ios" ? 32 : 16, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  ctaBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12 },
-  ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
-  modalHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 },
-  modalTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginBottom: 12 },
-  modalOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  modalOptionText: { fontSize: 15, color: colors.textPrimary },
-});   

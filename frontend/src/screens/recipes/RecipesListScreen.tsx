@@ -20,11 +20,15 @@ import { setRecipes, updateRecipe } from "../../store/slices/recipesSlice";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
-import { colors } from "../../theme/colors";
+// RNF3/6 — cache offline de receitas
+import { cacheRecipes, getCachedRecipes } from "../../services/offlineCache";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../../theme/ThemeContext";
 
 const CATEGORIES = ["Todas", "Favoritas", "Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa", "Outro"];
 
-export default function RecipesListScreen({ navigation }: any) {
+export default function RecipesListScreen({ navigation, route }: any) {
+  const { colors } = useTheme();
   const dispatch = useDispatch();
   const recipes  = useSelector((state: RootState) => state.recipes.recipes);
 
@@ -40,14 +44,23 @@ export default function RecipesListScreen({ navigation }: any) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Erro ao carregar receitas");
-      dispatch(setRecipes(data.map(normalizeRecipe)));
-    } catch (error) {
-      console.log("Erro ao carregar receitas:", error);
-      Alert.alert("Erro", "Erro ao carregar receitas");
+      const normalized = data.map(normalizeRecipe);
+      dispatch(setRecipes(normalized));
+      // RNF3/6 — persiste no cache para uso offline
+      cacheRecipes(normalized);
+    } catch {
+      // RNF3/6 — sem internet: usa cache local
+      const cached = await getCachedRecipes();
+      if (cached.length > 0) dispatch(setRecipes(cached));
     }
   }, [dispatch]);
 
-  useFocusEffect(useCallback(() => { loadRecipes(); }, [loadRecipes]));
+  useFocusEffect(useCallback(() => {
+    loadRecipes();
+    if (route.params?.initialCategory) {
+      setSelectedCategory(route.params.initialCategory);
+    }
+  }, [loadRecipes, route.params?.initialCategory]));
 
   const filtered = useMemo(() => {
     return recipes.filter((r) => {
@@ -100,14 +113,57 @@ export default function RecipesListScreen({ navigation }: any) {
     ]);
   }
 
+  const styles = useMemo(() => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+    headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+    communityButton: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.primary },
+    communityButtonText: { fontSize: 13, fontWeight: "700", color: colors.primary },
+    addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
+    searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },
+    filtersScroll: { flexGrow: 0, marginBottom: 8 },
+    filtersContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 8, flexDirection: "row", alignItems: "center" },
+    chip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignSelf: "flex-start" },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    chipTextActive: { color: "#fff" },
+    counter: { fontSize: 13, color: colors.textMuted, paddingHorizontal: 20, marginBottom: 8 },
+    listContent: { paddingHorizontal: 20, paddingBottom: 24 },
+    card: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 16, marginBottom: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, minHeight: 110 },
+    cardImage: { width: 90, height: 120, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+    cardImageReal: { width: 90, height: 120 },
+    cardContent: { flex: 1, padding: 12 },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
+    cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginRight: 8 },
+    badge: { alignSelf: "flex-start", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, marginBottom: 6 },
+    badgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
+    cardMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
+    cardMetaText: { fontSize: 12, color: colors.textMuted },
+    dot: { fontSize: 12, color: colors.textMuted },
+    cardFooter: { flexDirection: "row", justifyContent: "flex-end" },
+    deleteBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "#FEE2E2" },
+    deleteBtnText: { fontSize: 12, color: colors.danger, fontWeight: "600" },
+    emptyWrapper: { alignItems: "center", paddingTop: 60, gap: 8 },
+    emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 20 },
+  }), [colors]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Receitas</Text>
-        <Pressable style={styles.addButton} onPress={() => navigation.navigate("CreateRecipe")}>
-          <Ionicons name="add" size={22} color="#fff" />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.communityButton} onPress={() => navigation.navigate("CommunityRecipes")} accessibilityLabel="Receitas da comunidade" accessibilityRole="button">
+            <Ionicons name="earth-outline" size={18} color={colors.primary} />
+            <Text style={styles.communityButtonText}>Comunidade</Text>
+          </Pressable>
+          <Pressable style={styles.addButton} onPress={() => navigation.navigate("CreateRecipe")} accessibilityLabel="Criar receita" accessibilityRole="button">
+            <Ionicons name="add" size={22} color="#fff" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Busca */}
@@ -179,7 +235,6 @@ export default function RecipesListScreen({ navigation }: any) {
             style={styles.card}
             onPress={() => navigation.navigate("RecipeDetails", { recipeId: item.id })}
           >
-            {/* Imagem real ou placeholder */}
             <View style={styles.cardImage}>
               {item.imageUrl ? (
                 <Image
@@ -229,58 +284,3 @@ export default function RecipesListScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
-  addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
-  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },
-  filtersScroll: { flexGrow: 0, marginBottom: 8 },
-  filtersContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 8, flexDirection: "row", alignItems: "center" },
-  chip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignSelf: "flex-start" },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-  chipTextActive: { color: "#fff" },
-  counter: { fontSize: 13, color: colors.textMuted, paddingHorizontal: 20, marginBottom: 8 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  card: {
-  flexDirection: "row",
-  backgroundColor: colors.surface,
-  borderRadius: 16,
-  marginBottom: 12,
-  overflow: "hidden",
-  borderWidth: 1,
-  borderColor: colors.border,
-  minHeight: 110,
-},
-
-  // Imagem do card — largura fixa, altura 100% automática
-  cardImage: {
-  width: 90,
-  height: 120,
-  backgroundColor: colors.primaryLight,
-  alignItems: "center",
-  justifyContent: "center",
-},
-  cardImageReal: {
-  width: 90,
-  height: 120,
-},
-
-  cardContent: { flex: 1, padding: 12 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
-  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginRight: 8 },
-  badge: { alignSelf: "flex-start", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, marginBottom: 6 },
-  badgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
-  cardMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
-  cardMetaText: { fontSize: 12, color: colors.textMuted },
-  dot: { fontSize: 12, color: colors.textMuted },
-  cardFooter: { flexDirection: "row", justifyContent: "flex-end" },
-  deleteBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "#FEE2E2" },
-  deleteBtnText: { fontSize: 12, color: colors.danger, fontWeight: "600" },
-  emptyWrapper: { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 20 },
-});

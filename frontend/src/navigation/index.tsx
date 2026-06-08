@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { ActivityIndicator, Platform, View } from "react-native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+
+// RF14 — ref global para navegação via deep link
+export const navigationRef = createNavigationContainerRef();
 
 import OnboardingScreen        from "../screens/onboarding/OnboardingScreen";
 import LoginScreen             from "../screens/auth/LoginScreen";
@@ -22,6 +25,9 @@ import HistoryScreen           from "../screens/history/HistoryScreen";
 import PlannerScreen           from "../screens/planner/PlannerScreen";
 import ShoppingListsScreen     from "../screens/shopping/ShoppingListsScreen";
 import ShoppingListScreen      from "../screens/shopping/ShoppingListScreen";
+import BarcodeScannerScreen    from "../screens/shopping/BarcodeScannerScreen";
+import SupermarketsMapScreen   from "../screens/shopping/SupermarketsMapScreen";
+import CommunityRecipesScreen  from "../screens/recipes/CommunityRecipesScreen";
 import ProfileScreen           from "../screens/profile/ProfileScreen";
 import PersonalDataScreen      from "../screens/profile/PersonalDataScreen";
 import FoodPreferencesScreen   from "../screens/profile/FoodPreferencesScreen";
@@ -38,7 +44,8 @@ import {
   TabParamList,
 } from "../types/navigation";
 import { RootState } from "../store";
-import { colors } from "../theme/colors";
+// RF23 — cores reativas ao tema claro/escuro
+import { useTheme } from "../theme/ThemeContext";
 
 const AuthStack     = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack     = createNativeStackNavigator<HomeStackParamList>();
@@ -48,56 +55,67 @@ const ShoppingStack = createNativeStackNavigator<ShoppingStackParamList>();
 const ProfileStack  = createNativeStackNavigator<ProfileStackParamList>();
 const Tab           = createBottomTabNavigator<TabParamList>();
 
-const defaultScreenOptions = {
-  headerStyle: { backgroundColor: colors.background },
-  headerTintColor: colors.textPrimary,
-  headerShadowVisible: false,
-  headerTitleStyle: { fontWeight: "700" as const, fontSize: 17 },
-  headerBackTitleVisible: false,
-  contentStyle: { backgroundColor: colors.background },
-};
+function useScreenOptions() {
+  const { colors } = useTheme();
+  return {
+    headerStyle: { backgroundColor: colors.background },
+    headerTintColor: colors.textPrimary,
+    headerShadowVisible: false,
+    headerTitleStyle: { fontWeight: "700" as const, fontSize: 17 },
+    headerBackTitleVisible: false,
+    contentStyle: { backgroundColor: colors.background },
+  };
+}
 
 function HomeTabStack() {
+  const screenOptions = useScreenOptions();
   return (
-    <HomeStack.Navigator screenOptions={defaultScreenOptions}>
+    <HomeStack.Navigator screenOptions={screenOptions}>
       <HomeStack.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false }} />
     </HomeStack.Navigator>
   );
 }
 
 function RecipesTabStack() {
+  const screenOptions = useScreenOptions();
   return (
-    <RecipesStack.Navigator screenOptions={defaultScreenOptions}>
+    <RecipesStack.Navigator screenOptions={screenOptions}>
       <RecipesStack.Screen name="RecipesList"          component={RecipesListScreen}          options={{ headerShown: false }} />
       <RecipesStack.Screen name="RecipeDetails"        component={RecipeDetailsScreen}        options={{ headerShown: false }} />
       <RecipesStack.Screen name="CreateRecipe"         component={CreateRecipeScreen}         options={{ headerShown: false }} />
       <RecipesStack.Screen name="EditRecipe"           component={EditRecipeScreen}           options={{ title: "Editar receita" }} />
-      <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ title: "O que tenho em casa?" }} />
-      <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ title: "Histórico de preparo" }} />
+      <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ headerShown: false }} />
+      <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ headerShown: false }} />
+      <RecipesStack.Screen name="CommunityRecipes"     component={CommunityRecipesScreen}     options={{ headerShown: false }} />
     </RecipesStack.Navigator>
   );
 }
 
 function PlannerTabStack() {
+  const screenOptions = useScreenOptions();
   return (
-    <PlannerStack.Navigator screenOptions={defaultScreenOptions}>
+    <PlannerStack.Navigator screenOptions={screenOptions}>
       <PlannerStack.Screen name="Planner" component={PlannerScreen} options={{ headerShown: false }} />
     </PlannerStack.Navigator>
   );
 }
 
 function ShoppingTabStack() {
+  const screenOptions = useScreenOptions();
   return (
-    <ShoppingStack.Navigator screenOptions={defaultScreenOptions}>
-      <ShoppingStack.Screen name="ShoppingLists" component={ShoppingListsScreen} options={{ headerShown: false }} />
-      <ShoppingStack.Screen name="ShoppingList"  component={ShoppingListScreen}  options={{ headerShown: false }} />
+    <ShoppingStack.Navigator screenOptions={screenOptions}>
+      <ShoppingStack.Screen name="ShoppingLists"   component={ShoppingListsScreen}   options={{ headerShown: false }} />
+      <ShoppingStack.Screen name="ShoppingList"    component={ShoppingListScreen}    options={{ headerShown: false }} />
+      <ShoppingStack.Screen name="BarcodeScanner"  component={BarcodeScannerScreen}  options={{ headerShown: false }} />
+      <ShoppingStack.Screen name="SupermarketsMap" component={SupermarketsMapScreen} options={{ headerShown: false }} />
     </ShoppingStack.Navigator>
   );
 }
 
 function ProfileTabStack() {
+  const screenOptions = useScreenOptions();
   return (
-    <ProfileStack.Navigator screenOptions={defaultScreenOptions}>
+    <ProfileStack.Navigator screenOptions={screenOptions}>
       <ProfileStack.Screen name="Profile"               component={ProfileScreen}         options={{ headerShown: false }} />
       <ProfileStack.Screen name="PersonalData"          component={PersonalDataScreen}    options={{ headerShown: false }} />
       <ProfileStack.Screen name="FoodPreferences"       component={FoodPreferencesScreen} options={{ headerShown: false }} />
@@ -108,14 +126,27 @@ function ProfileTabStack() {
 }
 
 function MainTabs() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          backgroundColor: colors.tabBackground,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: Platform.OS === "ios" ? 84 : 64,
+          paddingBottom: Platform.OS === "ios" ? 24 : 8,
+          paddingTop: 8,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" as const },
         tabBarIcon: ({ color, focused, size }) => {
           type Name = React.ComponentProps<typeof Ionicons>["name"];
           const icons: Record<string, [Name, Name]> = {
@@ -131,7 +162,17 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="HomeTab"     component={HomeTabStack}     options={{ title: "Início" }} />
-      <Tab.Screen name="RecipesTab"  component={RecipesTabStack}  options={{ title: "Receitas" }} />
+      <Tab.Screen
+        name="RecipesTab"
+        component={RecipesTabStack}
+        options={{ title: "Receitas" }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            (navigation as any).navigate("RecipesTab", { screen: "RecipesList" });
+          },
+        })}
+      />
       <Tab.Screen name="PlannerTab"  component={PlannerTabStack}  options={{ title: "Planejar" }} />
       <Tab.Screen name="ShoppingTab" component={ShoppingTabStack} options={{ title: "Compras" }} />
       <Tab.Screen name="ProfileTab"  component={ProfileTabStack}  options={{ title: "Perfil" }} />
@@ -150,12 +191,13 @@ function AuthNavigator() {
   );
 }
 
-const ONBOARDING_KEY = (id: string | number) => `@comprinhas:onboardingDone:${id}`;
+const ONBOARDING_KEY = (id: string | number) => `@mealsync:onboardingDone:${id}`;
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useSelector((s: RootState) => s.auth);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [showOnboarding,    setShowOnboarding]    = useState(false);
+  const { colors } = useTheme();
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
@@ -176,7 +218,7 @@ export default function AppNavigator() {
 
   if (isLoading || (isAuthenticated && !onboardingChecked)) {
     return (
-      <View style={styles.loading}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -187,26 +229,8 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {isAuthenticated ? <MainTabs /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
-  tabBar: {
-    backgroundColor: colors.tabBackground,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    height: Platform.OS === "ios" ? 84 : 64,
-    paddingBottom: Platform.OS === "ios" ? 24 : 8,
-    paddingTop: 8,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-  },
-  tabLabel: { fontSize: 11, fontWeight: "600" },
-});

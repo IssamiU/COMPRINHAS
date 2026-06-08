@@ -35,4 +35,28 @@ export async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // RF21 — avaliações de receitas com constraint de 1 avaliação por usuário por receita
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS recipe_reviews (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_id VARCHAR(255) NOT NULL,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_name VARCHAR(255) NOT NULL DEFAULT 'Usuário',
+      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE (recipe_id, user_id)
+    );
+  `);
+
+  // Coluna de preferências alimentares do usuário (JSONB para flexibilidade)
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB DEFAULT '{}';
+  `);
+
+  // Foto de perfil salva via Cloudinary
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;
+  `);
 }
