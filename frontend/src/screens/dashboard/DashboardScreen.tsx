@@ -68,7 +68,7 @@ export default function DashboardScreen({ navigation }: any) {
   async function loadWeather() {
     try {
       setWeatherLoading(true);
-      const { status } = await Location.getForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const auth = await getAuth();
