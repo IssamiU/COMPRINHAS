@@ -82,6 +82,225 @@ export function barcodeProxy(req: Request, res: Response): void {
   request.on("error", () => res.json({ name: "", category: "Outros" }));
 }
 
+const SHOP_TYPE_LABELS: Record<string, string> = {
+  supermarket: "Supermercado", wholesale: "Atacadista",
+  grocery: "Mercearia", convenience: "Conveniência",
+  hypermarket: "Hipermercado", department_store: "Loja de Departamento",
+  food: "Alimentação", general: "Mercado Geral",
+};
+
+// RF19 — Nominatim reverse geocode: dado lat/lng retorna "Rua X, Bairro Y"
+function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const path = `/reverse?lat=${lat}&lon=${lng}&format=json&zoom=17&addressdetails=1&accept-language=pt-BR`;
+    const options: https.RequestOptions = {
+      hostname: "nominatim.openstreetmap.org",
+      path,
+      method: "GET",
+      headers: {
+        "User-Agent": "MealSync/1.0 contact:issami.umeoka@gmail.com",
+        "Accept": "application/json",
+      },
+    };
+    const req = https.request(options, (apiRes) => {
+      let raw = "";
+      apiRes.on("data", (chunk: Buffer) => { raw += chunk.toString("utf8"); });
+      apiRes.on("end", () => {
+        try {
+          const json = JSON.parse(raw);
+          const a = json.address ?? {};
+          const road   = a.road || a.pedestrian || a.path || a.footway || a.cycleway || "";
+          const suburb = a.suburb || a.neighbourhood || a.city_district || a.quarter || a.town || "";
+          const parts  = [road, suburb].filter(Boolean);
+          resolve(parts.length > 0 ? parts.join(", ") : null);
+        } catch { resolve(null); }
+      });
+    });
+    req.setTimeout(6000, () => { req.destroy(); resolve(null); });
+    req.on("error", () => resolve(null));
+    req.end();
+  });
+}
+
+// Geocodifica em paralelo (grupos de 8) apenas lojas sem endereço
+async function enrichWithAddresses(markets: any[]): Promise<void> {
+  const noAddr = markets.filter((m: any) => !m.address);
+  if (noAddr.length === 0) return;
+  console.log(`[RF19] Geocodificando ${noAddr.length} lojas sem endereço via Nominatim...`);
+  const CONCURRENCY = 8;
+  for (let i = 0; i < noAddr.length; i += CONCURRENCY) {
+    await Promise.all(
+      noAddr.slice(i, i + CONCURRENCY).map(async (m: any) => {
+        const addr = await reverseGeocode(m.lat, m.lng);
+        if (addr) m.address = addr;
+      })
+    );
+  }
+}
+
+// Servidores Overpass em ordem de preferência
+const OVERPASS_SERVERS = [
+  "overpass-api.de",
+  "overpass.kumi.systems",
+  "overpass.openstreetmap.fr",
+];
+
+function overpassPost(query: string, hostname: string): Promise<{ elements: any[]; err?: string }> {
+  return new Promise((resolve) => {
+    const body = `data=${encodeURIComponent(query)}`;
+    const options: https.RequestOptions = {
+      hostname,
+      path: "/api/interpreter",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": Buffer.byteLength(body),
+        // User-Agent obrigatório pela política de uso do Overpass
+        "User-Agent": "MealSync/1.0 contact:issami.umeoka@gmail.com",
+      },
+    };
+
+    const req = https.request(options, (apiRes) => {
+      let raw = "";
+      apiRes.on("data", (chunk: Buffer) => { raw += chunk.toString("utf8"); });
+      apiRes.on("end", () => {
+        if (apiRes.statusCode && apiRes.statusCode >= 400) {
+          resolve({ elements: [], err: `HTTP ${apiRes.statusCode}` });
+          return;
+        }
+        try {
+          const json = JSON.parse(raw);
+          resolve({ elements: Array.isArray(json.elements) ? json.elements : [] });
+        } catch {
+          // Overpass às vezes retorna XML de erro — capturar trecho para diagnóstico
+          resolve({ elements: [], err: `parse_error: ${raw.slice(0, 120)}` });
+        }
+      });
+    });
+
+    req.setTimeout(10000, () => { req.destroy(); resolve({ elements: [], err: "timeout" }); });
+    req.on("error", (e: Error) => resolve({ elements: [], err: e.message }));
+    req.write(body);
+    req.end();
+  });
+}
+
+// Tenta cada servidor Overpass até obter resultado
+async function overpassQuery(query: string): Promise<any[]> {
+  for (const server of OVERPASS_SERVERS) {
+    const { elements, err } = await overpassPost(query, server);
+    console.log(`[RF19] ${server}: ${elements.length} elementos${err ? ` | err: ${err}` : ""}`);
+    if (elements.length > 0) return elements;
+    if (!err) return []; // sem erro mas sem resultados = não há dados no OSM
+  }
+  return [];
+}
+
+function buildAddress(tags: Record<string, string>): string | null {
+  // 1ª opção: endereço completo em campo único
+  if (tags["addr:full"]) return tags["addr:full"];
+
+  // 2ª opção: rua + número
+  const street = tags["addr:street"] || tags["contact:street"] || tags["addr:place"] || "";
+  const number = tags["addr:housenumber"] || "";
+  if (street) return [street, number].filter(Boolean).join(", ");
+
+  // 3ª opção: bairro / cidade como referência
+  const suburb = tags["addr:suburb"] || tags["addr:neighbourhood"] || tags["addr:quarter"] || tags["addr:district"] || "";
+  const city   = tags["addr:city"] || tags["addr:town"] || tags["addr:village"] || "";
+  if (suburb || city) return [suburb, city].filter(Boolean).join(", ");
+
+  // 4ª opção: logradouro de contato
+  if (tags["contact:full_address"]) return tags["contact:full_address"];
+
+  return null;
+}
+
+function parseOverpassElements(elements: any[]): any[] {
+  const seen = new Set<string>();
+  return elements
+    .map((el: any) => {
+      const elLat = el.type === "node" ? el.lat : el.center?.lat;
+      const elLng = el.type === "node" ? el.lon : el.center?.lon;
+      if (!elLat || !elLng) return null;
+      const key = `${parseFloat(elLat).toFixed(4)},${parseFloat(elLng).toFixed(4)}`;
+      if (seen.has(key)) return null;
+      seen.add(key);
+      const tags: Record<string, string> = el.tags ?? {};
+      const shopType = tags.shop ?? "";
+      return {
+        id: String(el.id),
+        name: tags.name || tags["name:pt"] || SHOP_TYPE_LABELS[shopType] || "Comércio",
+        type: SHOP_TYPE_LABELS[shopType] ?? "Comércio",
+        lat: elLat,
+        lng: elLng,
+        address: buildAddress(tags),
+      };
+    })
+    .filter(Boolean);
+}
+
+// RF19 — GET /proxy/supermarkets?lat=&lng= → supermercados próximos via Overpass API
+export async function supermarketsProxy(req: Request, res: Response): Promise<void> {
+  const { lat, lng } = req.query as { lat?: string; lng?: string };
+
+  if (!lat || !lng || isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) {
+    res.status(400).json({ error: "Parâmetros lat e lng obrigatórios" });
+    return;
+  }
+
+  console.log(`[RF19] Buscando supermercados em lat=${lat} lng=${lng}`);
+
+  // Q1: por tipo de loja — inclui shop=supermarket, wholesale (Atacadão/Assaí), grocery, etc.
+  const shopTypes = "supermarket|wholesale|grocery|convenience|hypermarket|department_store|food|general";
+  const q1 = `[out:json][timeout:20];(node["shop"~"${shopTypes}"](around:5000,${lat},${lng});way["shop"~"${shopTypes}"](around:5000,${lat},${lng}););out center;`;
+
+  // Q2: por nome das redes brasileiras — sem acentos para evitar bug no regex do Overpass
+  // (Atacadao=Atacadão, Assai=Assaí, etc)
+  const chains = "Atacad|Assai|Carrefour|Extra|Makro|Condor|Muffato|Walmart|Hiper|BIG|Stix|Leve";
+  const q2 = `[out:json][timeout:20];(node["name"~"${chains}",i](around:5000,${lat},${lng});way["name"~"${chains}",i](around:5000,${lat},${lng}););out center;`;
+
+  // Q3: rede ampla — qualquer tag shop dentro de 3km (fallback para dados escassos como interior do Brasil)
+  const q3 = `[out:json][timeout:20];(node["shop"](around:3000,${lat},${lng});way["shop"](around:3000,${lat},${lng}););out center;`;
+
+  try {
+    // Inicia Q1 e Q2 em paralelo, mas retorna assim que Q1 tiver resultado
+    const q1Promise = overpassQuery(q1);
+    const q2Promise = overpassQuery(q2); // começa em background
+
+    const els1 = await q1Promise;
+    if (els1.length > 0) {
+      // Q1 trouxe resultados — não espera Q2 (evita 60s de timeout desnecessário)
+      const markets = parseOverpassElements(els1);
+      await enrichWithAddresses(markets);
+      console.log(`[RF19] Total final: ${markets.length} supermercados (via q1)`);
+      res.json(markets);
+      return;
+    }
+
+    // Q1 vazio — aguarda Q2 (busca por nome de rede)
+    const els2 = await q2Promise;
+    if (els2.length > 0) {
+      const markets = parseOverpassElements(els2);
+      await enrichWithAddresses(markets);
+      console.log(`[RF19] Total final: ${markets.length} supermercados (via q2)`);
+      res.json(markets);
+      return;
+    }
+
+    // Ambas vazias — query ampla como último recurso
+    console.log("[RF19] Q1 e Q2 vazias, tentando query ampla...");
+    const els3 = await overpassQuery(q3);
+    const markets = parseOverpassElements(els3);
+    await enrichWithAddresses(markets);
+    console.log(`[RF19] Total final: ${markets.length} supermercados (via q3 fallback)`);
+    res.json(markets);
+  } catch (e: any) {
+    console.error("[RF19] Erro inesperado:", e?.message);
+    res.json([]);
+  }
+}
+
 // RF18 — Tabela de conversão culinária (ml = base de volume, g = base de peso)
 const VOLUME_ML: Record<string, number> = {
   ml: 1,

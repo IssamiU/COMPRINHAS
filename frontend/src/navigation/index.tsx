@@ -26,6 +26,7 @@ import PlannerScreen           from "../screens/planner/PlannerScreen";
 import ShoppingListsScreen     from "../screens/shopping/ShoppingListsScreen";
 import ShoppingListScreen      from "../screens/shopping/ShoppingListScreen";
 import BarcodeScannerScreen    from "../screens/shopping/BarcodeScannerScreen";
+import SupermarketsMapScreen   from "../screens/shopping/SupermarketsMapScreen";
 import CommunityRecipesScreen  from "../screens/recipes/CommunityRecipesScreen";
 import ProfileScreen           from "../screens/profile/ProfileScreen";
 import PersonalDataScreen      from "../screens/profile/PersonalDataScreen";
@@ -98,6 +99,7 @@ function ShoppingTabStack() {
       <ShoppingStack.Screen name="ShoppingLists"   component={ShoppingListsScreen}   options={{ headerShown: false }} />
       <ShoppingStack.Screen name="ShoppingList"    component={ShoppingListScreen}    options={{ headerShown: false }} />
       <ShoppingStack.Screen name="BarcodeScanner"  component={BarcodeScannerScreen}  options={{ headerShown: false }} />
+      <ShoppingStack.Screen name="SupermarketsMap" component={SupermarketsMapScreen} options={{ headerShown: false }} />
     </ShoppingStack.Navigator>
   );
 }

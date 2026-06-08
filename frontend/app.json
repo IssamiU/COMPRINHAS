@@ -20,6 +20,11 @@
     },
     "android": {
       "package": "com.issami.mealsync",
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -48,6 +53,12 @@
         }
       ],
       "expo-local-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usado para encontrar supermercados próximos."
+        }
+      ],
       [
         "expo-camera",
         {

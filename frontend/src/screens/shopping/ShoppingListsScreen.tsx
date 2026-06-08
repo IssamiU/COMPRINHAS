@@ -69,7 +69,7 @@ export default function ShoppingListsScreen({ navigation }: any) {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lista de Compras</Text>
-        <Pressable style={styles.addButton} onPress={openCreateModal}>
+        <Pressable style={styles.addButton} onPress={openCreateModal} accessibilityLabel="Nova lista" accessibilityRole="button">
           <Ionicons name="add" size={22} color="#fff" />
         </Pressable>
       </View>
@@ -79,6 +79,18 @@ export default function ShoppingListsScreen({ navigation }: any) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <Pressable style={styles.supermarketsCard} onPress={() => navigation.navigate("SupermarketsMap")} accessibilityLabel="Ver supermercados próximos" accessibilityRole="button">
+            <View style={styles.supermarketsCardIcon}>
+              <Ionicons name="location-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.supermarketsCardTitle}>Supermercados próximos</Text>
+              <Text style={styles.supermarketsCardSub}>Ver supermercados próximos a você</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrapper}>
             <Ionicons name="cart-outline" size={56} color={colors.textMuted} />
@@ -196,4 +208,8 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   secondaryBtn: { backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
   secondaryBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
+  supermarketsCard: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border, gap: 12 },
+  supermarketsCardIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  supermarketsCardTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
+  supermarketsCardSub: { fontSize: 12, color: colors.textMuted },
 });

@@ -27,6 +27,7 @@ export type ShoppingStackParamList = {
   ShoppingLists: undefined;
   ShoppingList: { listId: string };
   BarcodeScanner: { listId: string };
+  SupermarketsMap: undefined;
 };
 
 export type ProfileStackParamList = {
