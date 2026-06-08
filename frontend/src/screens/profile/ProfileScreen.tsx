@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -93,9 +94,13 @@ export default function ProfileScreen({ navigation }: any) {
 
         {/* Header do perfil */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name ? getInitials(user.name) : "?"}</Text>
-          </View>
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user?.name ? getInitials(user.name) : "?"}</Text>
+            </View>
+          )}
           <Text style={styles.name}>{user?.name ?? "Usuário"}</Text>
           <Text style={styles.email}>{user?.email ?? ""}</Text>
         </View>
@@ -119,6 +124,7 @@ const styles = StyleSheet.create({
   container: { paddingBottom: 40 },
   profileHeader: { alignItems: "center", paddingTop: 28, paddingBottom: 24, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  avatarImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 12 },
   avatarText: { fontSize: 28, fontWeight: "700", color: "#fff" },
   name: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
   email: { fontSize: 14, color: colors.textSecondary },

@@ -21,6 +21,7 @@ import { colors } from "../../theme/colors";
 interface Supermarket {
   id: string;
   name: string;
+  type: string;
   lat: number;
   lng: number;
   address: string | null;

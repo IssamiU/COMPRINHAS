@@ -5,6 +5,7 @@ type User = {
   name: string;
   email: string;
   preferences?: Record<string, any>;
+  avatarUrl?: string | null;
 };
 
 type AuthPayload = {

@@ -96,6 +96,7 @@ export async function login(req: Request, res: Response) {
         name: user.name,
         email: user.email,
         preferences: user.preferences || {},
+        avatarUrl: user.avatar_url ?? null,
       },
       accessToken,
       refreshToken,
@@ -110,12 +111,12 @@ export async function getMe(req: Request, res: Response) {
   try {
     const userId = (req as any).userId;
     const result = await pool.query(
-      "SELECT id, name, email, preferences FROM users WHERE id = $1",
+      "SELECT id, name, email, preferences, avatar_url FROM users WHERE id = $1",
       [userId]
     );
     if (!result.rows.length) return res.status(404).json({ message: "Usuário não encontrado" });
     const u = result.rows[0];
-    return res.json({ id: u.id, name: u.name, email: u.email, preferences: u.preferences || {} });
+    return res.json({ id: u.id, name: u.name, email: u.email, preferences: u.preferences || {}, avatarUrl: u.avatar_url ?? null });
   } catch (error) {
     return res.status(500).json({ message: "Erro ao buscar perfil" });
   }
@@ -125,7 +126,7 @@ export async function getMe(req: Request, res: Response) {
 export async function updateMe(req: Request, res: Response) {
   try {
     const userId = (req as any).userId;
-    const { name, email, currentPassword, newPassword, preferences } = req.body;
+    const { name, email, currentPassword, newPassword, preferences, avatarUrl } = req.body;
 
     if (!name?.trim()) return res.status(400).json({ message: "Nome não pode estar vazio" });
     if (!email?.trim()) return res.status(400).json({ message: "E-mail não pode estar vazio" });
@@ -152,24 +153,23 @@ export async function updateMe(req: Request, res: Response) {
       if (existing.rows.length > 0) return res.status(409).json({ message: "E-mail já em uso" });
     }
 
-    if (preferences !== undefined) {
-      await pool.query(
-        "UPDATE users SET name = $1, email = $2, preferences = $3 WHERE id = $4",
-        [name.trim(), normalizedEmail, JSON.stringify(preferences), userId]
-      );
-    } else {
-      await pool.query(
-        "UPDATE users SET name = $1, email = $2 WHERE id = $3",
-        [name.trim(), normalizedEmail, userId]
-      );
-    }
+    // Monta UPDATE dinâmico com os campos disponíveis
+    const fields: string[] = ["name = $1", "email = $2"];
+    const values: any[]    = [name.trim(), normalizedEmail];
+    let   idx              = 3;
+
+    if (preferences !== undefined) { fields.push(`preferences = $${idx++}`); values.push(JSON.stringify(preferences)); }
+    if (avatarUrl !== undefined)   { fields.push(`avatar_url = $${idx++}`);  values.push(avatarUrl); }
+    values.push(userId);
+
+    await pool.query(`UPDATE users SET ${fields.join(", ")} WHERE id = $${idx}`, values);
 
     const updated = await pool.query(
-      "SELECT id, name, email, preferences FROM users WHERE id = $1",
+      "SELECT id, name, email, preferences, avatar_url FROM users WHERE id = $1",
       [userId]
     );
     const u = updated.rows[0];
-    return res.json({ user: { id: u.id, name: u.name, email: u.email, preferences: u.preferences || {} } });
+    return res.json({ user: { id: u.id, name: u.name, email: u.email, preferences: u.preferences || {}, avatarUrl: u.avatar_url ?? null } });
   } catch (error) {
     console.error("Erro ao atualizar perfil:", error);
     return res.status(500).json({ message: "Erro ao atualizar dados" });

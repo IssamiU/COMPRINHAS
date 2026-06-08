@@ -1,5 +1,6 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 
 import { RootState } from "../../store";
 import { setRecipes } from "../../store/slices/recipesSlice";
@@ -18,6 +20,25 @@ import { normalizeRecipe } from "../../utils/normalizeRecipe";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { colors } from "../../theme/colors";
+
+// RF28 — tipos e constantes de clima
+type WeatherCondition = "quente" | "frio" | "chuvoso" | "normal";
+
+interface WeatherData {
+  temp: number;
+  condition: WeatherCondition;
+  description: string;
+  icon: string;
+  message: string;
+  hint: string;
+}
+
+const WEATHER_STYLE: Record<WeatherCondition, { bg: string; iconName: React.ComponentProps<typeof Ionicons>["name"]; iconColor: string }> = {
+  quente:  { bg: "#FEF9C3", iconName: "sunny",        iconColor: "#F59E0B" },
+  frio:    { bg: "#DBEAFE", iconName: "snow",          iconColor: "#3B82F6" },
+  chuvoso: { bg: "#EDE9FE", iconName: "rainy",         iconColor: "#7C3AED" },
+  normal:  { bg: "#DCFCE7", iconName: "partly-sunny",  iconColor: "#16A34A" },
+};
 
 export default function DashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
@@ -34,6 +55,34 @@ export default function DashboardScreen({ navigation }: any) {
   const shoppingItemsCount = shoppingLists.reduce(
     (acc, list) => acc + list.items.filter((i) => !i.checked).length, 0
   );
+
+  // RF28 — estado do clima
+  const [weather, setWeather]         = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
+  useEffect(() => { loadWeather(); }, []);
+
+  async function loadWeather() {
+    try {
+      setWeatherLoading(true);
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") return; // não pede permissão no dashboard, usa só se já concedida
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const auth = await getAuth();
+      if (!auth) return;
+      const res = await fetch(
+        `${API_URL}/proxy/weather?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
+        { headers: { Authorization: `Bearer ${auth.accessToken}` } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.condition) setWeather(data as WeatherData);
+    } catch {
+      // clima é opcional — não mostrar erro
+    } finally {
+      setWeatherLoading(false);
+    }
+  }
 
   const loadRecipes = useCallback(async () => {
     try {
@@ -73,6 +122,36 @@ export default function DashboardScreen({ navigation }: any) {
             <Text style={styles.headerSub}>O que vamos cozinhar?</Text>
           </View>
         </View>
+
+        {/* RF28 — Card de clima */}
+        {weatherLoading && (
+          <View style={[styles.weatherCard, { backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center" }]}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+        {!weatherLoading && weather && (() => {
+          const ws = WEATHER_STYLE[weather.condition];
+          return (
+            <Pressable
+              style={[styles.weatherCard, { backgroundColor: ws.bg }]}
+              onPress={() => navigation.navigate("RecipesTab", { screen: "RecipesList" })}
+              accessibilityLabel="Sugestão de receita baseada no clima"
+              accessibilityRole="button"
+            >
+              <View style={styles.weatherLeft}>
+                <Ionicons name={ws.iconName} size={36} color={ws.iconColor} />
+                <View>
+                  <Text style={[styles.weatherTemp, { color: ws.iconColor }]}>{weather.temp}°C</Text>
+                  <Text style={styles.weatherDesc} numberOfLines={1}>{weather.description}</Text>
+                </View>
+              </View>
+              <View style={styles.weatherRight}>
+                <Text style={styles.weatherMessage}>{weather.message}</Text>
+                <Text style={[styles.weatherHint, { color: ws.iconColor }]}>{weather.hint} →</Text>
+              </View>
+            </Pressable>
+          );
+        })()}
 
         {/* Métricas */}
         <View style={styles.metricsGrid}>
@@ -221,4 +300,12 @@ const styles = StyleSheet.create({
   recipeRowInfo: { flex: 1 },
   recipeRowTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 2 },
   recipeRowMeta: { fontSize: 12, color: colors.textSecondary },
+  // RF28 — card de clima
+  weatherCard:    { flexDirection: "row", alignItems: "center", borderRadius: 16, padding: 14, marginBottom: 20, gap: 12 },
+  weatherLeft:    { flexDirection: "row", alignItems: "center", gap: 10, flex: 0 },
+  weatherTemp:    { fontSize: 22, fontWeight: "700" },
+  weatherDesc:    { fontSize: 11, color: colors.textSecondary, textTransform: "capitalize", maxWidth: 80 },
+  weatherRight:   { flex: 1 },
+  weatherMessage: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+  weatherHint:    { fontSize: 12, fontWeight: "700" },
 });

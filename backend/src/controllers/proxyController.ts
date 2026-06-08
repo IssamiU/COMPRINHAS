@@ -361,3 +361,79 @@ export function convertProxy(req: Request, res: Response): void {
 
   res.status(400).json({ error: "Unidades incompatíveis ou não suportadas" });
 }
+
+// RF28 — GET /proxy/weather?lat=&lng= → clima atual via OpenWeatherMap
+export async function weatherProxy(req: Request, res: Response): Promise<void> {
+  const { lat, lng } = req.query as { lat?: string; lng?: string };
+
+  if (!lat || !lng) { res.status(400).json({ error: "lat e lng obrigatórios" }); return; }
+
+  const apiKey = process.env.OPENWEATHER_API_KEY ?? "";
+  if (!apiKey) { res.status(503).json({ error: "OPENWEATHER_API_KEY não configurada" }); return; }
+
+  const path = `/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric&lang=pt_br`;
+
+  const raw = await new Promise<string | null>((resolve) => {
+    const options: https.RequestOptions = {
+      hostname: "api.openweathermap.org",
+      path,
+      method: "GET",
+      headers: { "User-Agent": "MealSync/1.0" },
+    };
+    const r = https.request(options, (apiRes) => {
+      let data = "";
+      apiRes.on("data", (c: Buffer) => { data += c.toString(); });
+      apiRes.on("end", () => resolve(data));
+    });
+    r.setTimeout(8000, () => { r.destroy(); resolve(null); });
+    r.on("error", () => resolve(null));
+    r.end();
+  });
+
+  if (!raw) { res.status(502).json({ error: "Falha ao buscar clima" }); return; }
+
+  try {
+    const json = JSON.parse(raw);
+
+    // OWM retorna cod != 200 para chave inválida, limite excedido, cidade não encontrada, etc.
+    if (json.cod && String(json.cod) !== "200") {
+      console.error(`[RF28] OWM erro cod=${json.cod}: ${json.message}`);
+      res.status(502).json({ error: `OWM: ${json.message ?? json.cod}` });
+      return;
+    }
+
+    if (json.main?.temp === undefined) {
+      res.status(502).json({ error: "Resposta inesperada do OpenWeatherMap" });
+      return;
+    }
+
+    const temp      = Math.round(json.main.temp);
+    const weatherId = json.weather?.[0]?.id ?? 800;
+    const description: string = json.weather?.[0]?.description ?? "";
+    const icon: string        = json.weather?.[0]?.icon ?? "01d";
+
+    let condition: "quente" | "frio" | "chuvoso" | "normal";
+    if (weatherId >= 200 && weatherId < 600) {
+      condition = weatherId < 600 && weatherId >= 500 ? "chuvoso" : weatherId < 300 ? "chuvoso" : "chuvoso";
+    } else if (weatherId >= 600 && weatherId < 700) {
+      condition = "frio";
+    } else if (temp >= 28) {
+      condition = "quente";
+    } else if (temp < 17) {
+      condition = "frio";
+    } else {
+      condition = "normal";
+    }
+
+    const SUGGESTIONS: Record<typeof condition, { message: string; hint: string }> = {
+      quente:  { message: "Calor! Que tal algo refrescante?",    hint: "Saladas e pratos leves" },
+      frio:    { message: "Dia frio! Hora de uma sopa quente.",  hint: "Sopas, caldos e assados" },
+      chuvoso: { message: "Chuva pede comida de conforto!",      hint: "Pratos reconfortantes" },
+      normal:  { message: "Clima perfeito para cozinhar!",       hint: "Explore novas receitas" },
+    };
+
+    res.json({ temp, condition, description, icon, ...SUGGESTIONS[condition] });
+  } catch {
+    res.status(502).json({ error: "Resposta inválida do OpenWeatherMap" });
+  }
+}

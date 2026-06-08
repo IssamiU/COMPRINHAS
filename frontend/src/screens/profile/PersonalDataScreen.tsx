@@ -29,8 +29,10 @@ export default function PersonalDataScreen({ navigation }: any) {
     return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
   }
 
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [uploading, setUploading]   = useState(false);
+  // avatarUri = URI local para preview; uploadedUrl = URL Cloudinary já enviada
+  const [avatarUri, setAvatarUri]     = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [uploading, setUploading]     = useState(false);
   const [name, setName]             = useState(user?.name ?? "");
   const [email, setEmail]           = useState(user?.email ?? "");
   const [currentPass, setCurrentPass] = useState("");
@@ -43,10 +45,12 @@ export default function PersonalDataScreen({ navigation }: any) {
     setAvatarUri(uri);
     try {
       setUploading(true);
-      await uploadImage(uri);
+      const { url } = await uploadImage(uri);
+      setUploadedUrl(url); // armazena URL Cloudinary para enviar no handleSave
     } catch (e: any) {
       Alert.alert("Erro", e.message || "Falha ao enviar foto.");
       setAvatarUri(null);
+      setUploadedUrl(null);
     } finally {
       setUploading(false);
     }
@@ -64,7 +68,8 @@ export default function PersonalDataScreen({ navigation }: any) {
       if (!auth) return;
 
       const body: Record<string, string> = { name: name.trim(), email: email.trim() };
-      if (newPass) { body.currentPassword = currentPass; body.newPassword = newPass; }
+      if (newPass)      { body.currentPassword = currentPass; body.newPassword = newPass; }
+      if (uploadedUrl)  { body.avatarUrl = uploadedUrl; }
 
       const res = await fetch(`${API_URL}/auth/me`, {
         method: "PUT",
@@ -75,8 +80,9 @@ export default function PersonalDataScreen({ navigation }: any) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Erro ao salvar");
 
-      dispatch(updateUser({ name: data.user.name, email: data.user.email }));
-      await saveAuth({ ...auth, user: { ...auth.user, name: data.user.name, email: data.user.email } });
+      const updatedUser = { name: data.user.name, email: data.user.email, avatarUrl: data.user.avatarUrl ?? null };
+      dispatch(updateUser(updatedUser));
+      await saveAuth({ ...auth, user: { ...auth.user, ...updatedUser } });
 
       setCurrentPass("");
       setNewPass("");
@@ -106,8 +112,8 @@ export default function PersonalDataScreen({ navigation }: any) {
           {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              {avatarUri || user?.avatarUrl ? (
+                <Image source={{ uri: avatarUri ?? user!.avatarUrl! }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{user?.name ? getInitials(user.name) : "?"}</Text>
