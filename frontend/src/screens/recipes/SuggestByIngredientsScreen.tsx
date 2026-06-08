@@ -22,7 +22,16 @@ interface SuggestedRecipe {
   servings: number;
   matchCount: number;
   totalIngredients: number;
+  authorName?: string;
 }
+
+type Scope = "mine" | "community" | "all";
+
+const SCOPES: { key: Scope; label: string }[] = [
+  { key: "mine",      label: "Minhas receitas" },
+  { key: "community", label: "Comunidade" },
+  { key: "all",       label: "Ambas" },
+];
 
 export default function SuggestByIngredientsScreen({ navigation }: any) {
   const [input, setInput] = useState("");
@@ -30,14 +39,12 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
   const [results, setResults] = useState<SuggestedRecipe[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scope, setScope] = useState<Scope>("mine");
 
   function handleAddTag() {
     const trimmed = input.trim().toLowerCase();
     if (!trimmed) return;
-    if (tags.includes(trimmed)) {
-      setInput("");
-      return;
-    }
+    if (tags.includes(trimmed)) { setInput(""); return; }
     setTags((prev) => [...prev, trimmed]);
     setInput("");
   }
@@ -59,8 +66,9 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
       if (!auth) return;
 
       const query = tags.join(",");
+      const scopeParam = scope !== "mine" ? `&scope=${scope}` : "";
       const response = await fetch(
-        `${API_URL}/recipes/suggest?ingredients=${encodeURIComponent(query)}`,
+        `${API_URL}/recipes/suggest?ingredients=${encodeURIComponent(query)}${scopeParam}`,
         { headers: { Authorization: `Bearer ${auth.accessToken}` } }
       );
 
@@ -76,7 +84,6 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
       );
       setSearched(true);
     } catch (error) {
-      console.error("Erro ao buscar sugestões:", error);
       Alert.alert("Erro", "Não foi possível buscar sugestões.");
     } finally {
       setLoading(false);
@@ -120,17 +127,29 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
             {tags.length > 0 && (
               <View style={styles.tagsContainer}>
                 {tags.map((tag) => (
-                  <Pressable
-                    key={tag}
-                    style={styles.tag}
-                    onPress={() => handleRemoveTag(tag)}
-                  >
+                  <Pressable key={tag} style={styles.tag} onPress={() => handleRemoveTag(tag)}>
                     <Text style={styles.tagText}>{tag}</Text>
                     <Text style={styles.tagRemove}> ✕</Text>
                   </Pressable>
                 ))}
               </View>
             )}
+
+            {/* Seletor de escopo */}
+            <Text style={styles.scopeLabel}>Buscar em:</Text>
+            <View style={styles.scopeRow}>
+              {SCOPES.map((s) => (
+                <Pressable
+                  key={s.key}
+                  style={[styles.scopeBtn, scope === s.key && styles.scopeBtnActive]}
+                  onPress={() => setScope(s.key)}
+                >
+                  <Text style={[styles.scopeText, scope === s.key && styles.scopeTextActive]}>
+                    {s.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             <Pressable
               style={[styles.searchButton, (loading || tags.length === 0) && styles.searchButtonDisabled]}
@@ -158,7 +177,7 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>Nenhuma receita encontrada</Text>
               <Text style={styles.emptyText}>
-                Tente adicionar mais ingredientes ou cadastre receitas com esses ingredientes.
+                Tente adicionar mais ingredientes ou explore outra fonte de busca.
               </Text>
             </View>
           ) : null
@@ -177,6 +196,10 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
               </View>
             </View>
 
+            {item.authorName ? (
+              <Text style={styles.cardAuthor}>Por {item.authorName}</Text>
+            ) : null}
+
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryBadgeText}>{item.category}</Text>
             </View>
@@ -185,17 +208,11 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
               {item.prepTimeMinutes} min · {item.servings} porções
             </Text>
 
-            {/* Barra de progresso de match */}
             <View style={styles.progressBar}>
               <View
                 style={[
                   styles.progressFill,
-                  {
-                    width: `${Math.min(
-                      100,
-                      Math.round((item.matchCount / item.totalIngredients) * 100)
-                    )}%`,
-                  },
+                  { width: `${Math.min(100, Math.round((item.matchCount / item.totalIngredients) * 100))}%` },
                 ]}
               />
             </View>
@@ -213,98 +230,35 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary, textAlign: "center" },
   subtitle: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, textAlign: "center" },
   inputRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 14,
-    color: colors.textPrimary,
-    fontSize: 15,
-  },
-  addTagButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    width: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  input: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15 },
+  addTagButton: { backgroundColor: colors.primary, borderRadius: 12, width: 52, alignItems: "center", justifyContent: "center" },
   addTagButtonText: { color: "#fff", fontSize: 24, fontWeight: "700" },
   tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.primaryLight,
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
+  tag: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   tagText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
   tagRemove: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
-  searchButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
+  scopeLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, marginBottom: 8, letterSpacing: 0.5 },
+  scopeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  scopeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: "center" },
+  scopeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  scopeText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+  scopeTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  searchButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: "center", marginBottom: 20 },
   searchButtonDisabled: { opacity: 0.5 },
   searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  resultsHeader: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    marginBottom: 12,
-  },
-  emptyCard: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-  },
+  resultsHeader: { fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 12 },
+  emptyCard: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 24, alignItems: "center" },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 },
   emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-    gap: 8,
-  },
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 14 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4, gap: 8 },
   cardTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  matchBadge: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
+  cardAuthor: { fontSize: 12, color: colors.textMuted, marginBottom: 6 },
+  matchBadge: { backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   matchBadgeText: { color: colors.primaryDark, fontWeight: "700", fontSize: 11 },
-  categoryBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 999,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    marginBottom: 8,
-  },
+  categoryBadge: { alignSelf: "flex-start", backgroundColor: colors.surfaceAlt, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 8 },
   categoryBadgeText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
   cardMeta: { fontSize: 13, color: colors.textSecondary, marginBottom: 10 },
-  progressBar: {
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 99,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: colors.primary,
-    borderRadius: 99,
-  },
+  progressBar: { height: 4, backgroundColor: colors.border, borderRadius: 99, overflow: "hidden" },
+  progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 99 },
 });

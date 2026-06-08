@@ -27,6 +27,9 @@ export function normalizeRecipe(data: any): Recipe {
     servings: data.servings ?? 1,
     imageUrl: data.imageUrl ?? "",
     isFavorite: data.isFavorite ?? false,
+    isPublic: data.isPublic ?? false,
+    authorName: data.authorName ?? "",
+    userId: data.userId ? String(data.userId) : "",
     ingredients: (data.ingredients ?? []).map((item: any, index: number) => ({
       id: item.id ?? `${recipeId}-ingredient-${index}`,
       name: item.name ?? "",

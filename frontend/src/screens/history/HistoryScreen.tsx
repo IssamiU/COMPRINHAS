@@ -68,24 +68,8 @@ export default function HistoryScreen({ navigation }: any) {
     });
   }
 
-  async function handlePrepareAgain(recipeId: string) {
-    try {
-      const auth = await getAuth();
-      if (!auth) return;
-
-      await fetch(`${API_URL}/history`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
-        },
-        body: JSON.stringify({ recipeId }),
-      });
-
-      navigation.navigate("RecipeDetails", { recipeId });
-    } catch (error) {
-      console.error("Erro ao registrar preparo:", error);
-    }
+  function handleOpenRecipe(recipeId: string) {
+    navigation.navigate("RecipeDetails", { recipeId });
   }
 
   function handleDeleteItem(id: string) {
@@ -210,14 +194,12 @@ export default function HistoryScreen({ navigation }: any) {
 
           <View style={styles.actionsRow}>
             {item.recipe && (
-              <>
-                <Pressable
-                  style={styles.prepareAgainButton}
-                  onPress={() => handlePrepareAgain(item.recipeId)}
-                >
-                  <Text style={styles.prepareAgainButtonText}>Preparar novamente</Text>
-                </Pressable>
-              </>
+              <Pressable
+                style={styles.prepareAgainButton}
+                onPress={() => handleOpenRecipe(item.recipeId)}
+              >
+                <Text style={styles.prepareAgainButtonText}>Ver receita</Text>
+              </Pressable>
             )}
 
             <Pressable

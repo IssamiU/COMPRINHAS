@@ -20,7 +20,6 @@ export default function ProfileScreen({ navigation }: any) {
   const dispatch     = useDispatch();
   const user         = useSelector((s: RootState) => s.auth.user);
   const recipes      = useSelector((s: RootState) => s.recipes.recipes);
-  const plannedMeals = useSelector((s: RootState) => s.planner.plannedMeals);
   const userId       = String(user?.id ?? "");
   const shoppingLists= useSelector((s: RootState) => s.shoppingList.listsByUser[userId] ?? []);
   const favoritesCount = recipes.filter((r) => r.isFavorite).length;
@@ -55,7 +54,7 @@ export default function ProfileScreen({ navigation }: any) {
   ];
 
   const activityItems: MenuItem[] = [
-    { icon: "heart-outline", label: "Receitas favoritas",   sublabel: `${favoritesCount} receitas`,  onPress: () => navigation.navigate("RecipesTab"),                          iconBg: "#FEE2E2", iconColor: colors.danger },
+    { icon: "heart-outline", label: "Receitas favoritas",   sublabel: `${favoritesCount} receitas`,  onPress: () => navigation.navigate("RecipesTab", { screen: "RecipesList", params: { initialCategory: "Favoritas" } }), iconBg: "#FEE2E2", iconColor: colors.danger },
     { icon: "time-outline",  label: "Histórico de preparo", sublabel: "Receitas já preparadas",      onPress: () => navigation.navigate("RecipesTab", { screen: "History" }),   iconBg: "#FEF3C7", iconColor: "#F59E0B" },
   ];
 
@@ -101,24 +100,6 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.email}>{user?.email ?? ""}</Text>
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{recipes.length}</Text>
-            <Text style={styles.statLabel}>Receitas</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{favoritesCount}</Text>
-            <Text style={styles.statLabel}>Favoritas</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{plannedMeals.length}</Text>
-            <Text style={styles.statLabel}>Planejadas</Text>
-          </View>
-        </View>
-
         <Section title="CONTA"     items={accountItems} />
         <Section title="ATIVIDADE" items={activityItems} />
         <Section title="OUTROS"    items={otherItems} />
@@ -141,11 +122,6 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 28, fontWeight: "700", color: "#fff" },
   name: { fontSize: 20, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
   email: { fontSize: 14, color: colors.textSecondary },
-  statsRow: { flexDirection: "row", backgroundColor: colors.surface, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 8 },
-  statItem: { flex: 1, alignItems: "center" },
-  statNumber: { fontSize: 22, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
-  statLabel: { fontSize: 12, color: colors.textSecondary },
-  statDivider: { width: 1, backgroundColor: colors.border },
   section: { paddingHorizontal: 20, marginTop: 20 },
   sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textMuted, letterSpacing: 1, marginBottom: 8 },
   sectionCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },

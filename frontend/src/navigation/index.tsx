@@ -26,6 +26,7 @@ import PlannerScreen           from "../screens/planner/PlannerScreen";
 import ShoppingListsScreen     from "../screens/shopping/ShoppingListsScreen";
 import ShoppingListScreen      from "../screens/shopping/ShoppingListScreen";
 import BarcodeScannerScreen    from "../screens/shopping/BarcodeScannerScreen";
+import CommunityRecipesScreen  from "../screens/recipes/CommunityRecipesScreen";
 import ProfileScreen           from "../screens/profile/ProfileScreen";
 import PersonalDataScreen      from "../screens/profile/PersonalDataScreen";
 import FoodPreferencesScreen   from "../screens/profile/FoodPreferencesScreen";
@@ -78,6 +79,7 @@ function RecipesTabStack() {
       <RecipesStack.Screen name="EditRecipe"           component={EditRecipeScreen}           options={{ title: "Editar receita" }} />
       <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ title: "O que tenho em casa?" }} />
       <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ title: "Histórico de preparo" }} />
+      <RecipesStack.Screen name="CommunityRecipes"     component={CommunityRecipesScreen}     options={{ headerShown: false }} />
     </RecipesStack.Navigator>
   );
 }

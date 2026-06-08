@@ -13,12 +13,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
+import { updateUser } from "../../store/slices/authSlice";
 import { pickImage, uploadImage } from "../../services/imageService";
+import { getAuth, saveAuth } from "../../storage/authStorage";
+import { API_URL } from "../../services/api";
 import { colors } from "../../theme/colors";
 
 export default function PersonalDataScreen({ navigation }: any) {
+  const dispatch = useDispatch();
   const user = useSelector((s: RootState) => s.auth.user);
 
   function getInitials(name: string) {
@@ -26,14 +30,12 @@ export default function PersonalDataScreen({ navigation }: any) {
   }
 
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [name,        setName]        = useState(user?.name ?? "");
-  const [email,       setEmail]       = useState(user?.email ?? "");
-  const [phone,       setPhone]       = useState("");
-  const [birth,       setBirth]       = useState("");
+  const [uploading, setUploading]   = useState(false);
+  const [name, setName]             = useState(user?.name ?? "");
+  const [email, setEmail]           = useState(user?.email ?? "");
   const [currentPass, setCurrentPass] = useState("");
-  const [newPass,     setNewPass]     = useState("");
-  const [saving,      setSaving]      = useState(false);
+  const [newPass, setNewPass]         = useState("");
+  const [saving, setSaving]           = useState(false);
 
   async function handlePickAvatar() {
     const uri = await pickImage();
@@ -42,7 +44,6 @@ export default function PersonalDataScreen({ navigation }: any) {
     try {
       setUploading(true);
       await uploadImage(uri);
-      // TODO: salvar a URL no backend quando endpoint /users/me for implementado
     } catch (e: any) {
       Alert.alert("Erro", e.message || "Falha ao enviar foto.");
       setAvatarUri(null);
@@ -53,19 +54,42 @@ export default function PersonalDataScreen({ navigation }: any) {
 
   async function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "O nome não pode estar vazio."); return; }
+    if (!email.trim()) { Alert.alert("Atenção", "O e-mail não pode estar vazio."); return; }
     if (newPass && newPass.length < 6) { Alert.alert("Atenção", "A nova senha deve ter pelo menos 6 caracteres."); return; }
     if (newPass && !currentPass) { Alert.alert("Atenção", "Digite a senha atual para alterá-la."); return; }
-    setSaving(true);
-    // TODO: chamar PUT /users/me quando endpoint for implementado
-    setTimeout(() => {
-      setSaving(false);
+
+    try {
+      setSaving(true);
+      const auth = await getAuth();
+      if (!auth) return;
+
+      const body: Record<string, string> = { name: name.trim(), email: email.trim() };
+      if (newPass) { body.currentPassword = currentPass; body.newPassword = newPass; }
+
+      const res = await fetch(`${API_URL}/auth/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erro ao salvar");
+
+      dispatch(updateUser({ name: data.user.name, email: data.user.email }));
+      await saveAuth({ ...auth, user: { ...auth.user, name: data.user.name, email: data.user.email } });
+
+      setCurrentPass("");
+      setNewPass("");
       Alert.alert("Sucesso", "Dados atualizados!", [{ text: "OK", onPress: () => navigation.goBack() }]);
-    }, 600);
+    } catch (e: any) {
+      Alert.alert("Erro", e.message || "Não foi possível salvar os dados.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
@@ -89,7 +113,7 @@ export default function PersonalDataScreen({ navigation }: any) {
                   <Text style={styles.avatarText}>{user?.name ? getInitials(user.name) : "?"}</Text>
                 </View>
               )}
-              <Pressable style={styles.avatarCamera} onPress={handlePickAvatar} disabled={uploading}>
+              <Pressable style={styles.avatarCamera} onPress={handlePickAvatar} disabled={uploading} accessibilityLabel="Alterar foto" accessibilityRole="button">
                 <Ionicons name="camera" size={16} color="#fff" />
               </Pressable>
             </View>
@@ -105,13 +129,7 @@ export default function PersonalDataScreen({ navigation }: any) {
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Seu nome" placeholderTextColor={colors.textMuted} returnKeyType="next" />
             <View style={styles.divider} />
             <Text style={styles.fieldLabel}>E-mail</Text>
-            <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" returnKeyType="next" />
-            <View style={styles.divider} />
-            <Text style={styles.fieldLabel}>Telefone</Text>
-            <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="(11) 99999-9999" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" returnKeyType="next" />
-            <View style={styles.divider} />
-            <Text style={styles.fieldLabel}>Data de nascimento</Text>
-            <TextInput style={styles.input} value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA" placeholderTextColor={colors.textMuted} returnKeyType="done" />
+            <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" returnKeyType="done" />
           </View>
 
           {/* Alterar senha */}
@@ -124,7 +142,8 @@ export default function PersonalDataScreen({ navigation }: any) {
             <TextInput style={styles.input} value={newPass} onChangeText={setNewPass} placeholder="Mínimo 6 caracteres" placeholderTextColor={colors.textMuted} secureTextEntry returnKeyType="done" />
           </View>
 
-          {/* Excluir conta */}
+          {saving && <Text style={styles.savingText}>Salvando...</Text>}
+
           <Pressable style={styles.dangerBtn} onPress={() => Alert.alert("Excluir conta", "Esta ação é irreversível. Deseja continuar?", [{ text: "Cancelar", style: "cancel" }, { text: "Excluir", style: "destructive", onPress: () => {} }])}>
             <Text style={styles.dangerBtnText}>Excluir minha conta</Text>
           </Pressable>
@@ -153,6 +172,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: "500", color: colors.textMuted, marginTop: 10, marginBottom: 4 },
   input: { height: 44, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
   divider: { height: 1, backgroundColor: colors.border },
+  savingText: { textAlign: "center", color: colors.textMuted, fontSize: 13, marginTop: 12 },
   dangerBtn: { height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#FCA5A5", alignItems: "center", justifyContent: "center", marginTop: 24 },
   dangerBtnText: { color: colors.danger, fontWeight: "600", fontSize: 14 },
 });

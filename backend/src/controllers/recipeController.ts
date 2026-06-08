@@ -1,10 +1,21 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Recipe } from "../models/Recipe";
+import { pool } from "../config/database";
 
 function formatRecipe(recipe: any) {
   const obj = recipe.toObject ? recipe.toObject() : recipe;
   return { ...obj, id: String(obj._id) };
+}
+
+// Formata receita computando isFavorite do ponto de vista do usuário solicitante
+function formatRecipeForUser(recipe: any, userId: string) {
+  const obj = recipe.toObject ? recipe.toObject() : recipe;
+  const isOwner = String(obj.userId) === String(userId);
+  const isFavorite = isOwner
+    ? Boolean(obj.isFavorite)
+    : (obj.savedBy ?? []).includes(userId);
+  return { ...obj, id: String(obj._id), isFavorite };
 }
 
 function getParamId(value: unknown): string | null {
@@ -20,7 +31,15 @@ function getUserId(req: Request): string {
 export async function createRecipe(req: Request, res: Response) {
   try {
     const userId = getUserId(req);
-    const recipe = new Recipe({ ...req.body, userId });
+    // RF21 — buscar nome do autor no PostgreSQL para exibição na comunidade
+    let authorName = req.body.authorName || "";
+    if (!authorName) {
+      try {
+        const result = await pool.query("SELECT name FROM users WHERE id = $1", [userId]);
+        authorName = result.rows[0]?.name || "Usuário";
+      } catch {}
+    }
+    const recipe = new Recipe({ ...req.body, userId, authorName });
     await recipe.save();
     return res.status(201).json(formatRecipe(recipe));
   } catch (error) {
@@ -61,8 +80,18 @@ export async function suggestRecipes(req: Request, res: Response) {
       return res.status(400).json({ message: "Informe ao menos um ingrediente." });
     }
 
-    // Busca todas as receitas do usuário
-    const recipes = await Recipe.find({ userId }).lean();
+    // scope: "mine" (padrão) | "community" | "all"
+    const scope = req.query.scope as string | undefined;
+    let baseQuery: any;
+    if (scope === "community") {
+      baseQuery = { isPublic: true };
+    } else if (scope === "all") {
+      baseQuery = { $or: [{ userId }, { isPublic: true }] };
+    } else {
+      baseQuery = { userId };
+    }
+
+    const recipes = await Recipe.find(baseQuery).lean();
 
     // Para cada receita calcula quantos ingredientes batem com os informados
     const scored = recipes
@@ -102,12 +131,28 @@ export async function getRecipeById(req: Request, res: Response) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "ID de receita inválido" });
     }
-    const recipe = await Recipe.findOne({ _id: id, userId });
+        // RF21 — permite visualizar receita própria OU pública de outro usuário
+    const recipe = await Recipe.findOne({
+      _id: id,
+      $or: [{ userId }, { isPublic: true }],
+    });
     if (!recipe) return res.status(404).json({ message: "Receita não encontrada" });
-    return res.json(formatRecipe(recipe));
+    return res.json(formatRecipeForUser(recipe, userId));
   } catch (error) {
     console.error("Erro ao buscar receita por ID:", error);
     return res.status(500).json({ message: "Erro ao buscar receita" });
+  }
+}
+
+// RF21 — lista todas as receitas públicas da comunidade
+export async function getCommunityRecipes(req: Request, res: Response) {
+  try {
+    const userId = getUserId(req);
+    const recipes = await Recipe.find({ isPublic: true }).sort({ createdAt: -1 });
+    return res.json(recipes.map((r) => formatRecipeForUser(r, userId)));
+  } catch (error) {
+    console.error("Erro ao buscar receitas da comunidade:", error);
+    return res.status(500).json({ message: "Erro ao buscar receitas da comunidade" });
   }
 }
 
@@ -138,11 +183,22 @@ export async function toggleFavorite(req: Request, res: Response) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "ID de receita inválido" });
     }
-    const recipe = await Recipe.findOne({ _id: id, userId });
+    // Permite favoritar receita própria OU pública de outro usuário
+    const recipe = await Recipe.findOne({ _id: id, $or: [{ userId }, { isPublic: true }] });
     if (!recipe) return res.status(404).json({ message: "Receita não encontrada" });
-    recipe.isFavorite = !recipe.isFavorite;
+
+    if (String(recipe.userId) === String(userId)) {
+      // Dono: toggle campo isFavorite
+      recipe.isFavorite = !recipe.isFavorite;
+    } else {
+      // Outro usuário em receita pública: toggle no array savedBy
+      const idx = (recipe.savedBy ?? []).indexOf(userId);
+      if (idx === -1) recipe.savedBy.push(userId);
+      else recipe.savedBy.splice(idx, 1);
+    }
+
     await recipe.save();
-    return res.json(formatRecipe(recipe));
+    return res.json(formatRecipeForUser(recipe, userId));
   } catch (error) {
     console.error("Erro ao atualizar favorito:", error);
     return res.status(500).json({ message: "Erro ao atualizar favorito" });
@@ -173,7 +229,8 @@ export async function duplicateRecipe(req: Request, res: Response) {
       return res.status(400).json({ message: "ID de receita inválido" });
     }
 
-    const original = await Recipe.findOne({ _id: id, userId });
+    // Permite duplicar receita própria OU pública de outro usuário
+    const original = await Recipe.findOne({ _id: id, $or: [{ userId }, { isPublic: true }] });
     if (!original) return res.status(404).json({ message: "Receita não encontrada" });
 
     const originalObj = original.toObject();
@@ -184,6 +241,8 @@ export async function duplicateRecipe(req: Request, res: Response) {
       userId,
       title: `${originalObj.title} (cópia)`,
       isFavorite: false,
+      isPublic: false,
+      savedBy: [],
       createdAt: new Date(),
       ingredients: originalObj.ingredients.map((i: any) => ({
         ...i,

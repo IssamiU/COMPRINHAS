@@ -24,7 +24,7 @@ import { colors } from "../../theme/colors";
 
 const CATEGORIES = ["Todas", "Favoritas", "Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa", "Outro"];
 
-export default function RecipesListScreen({ navigation }: any) {
+export default function RecipesListScreen({ navigation, route }: any) {
   const dispatch = useDispatch();
   const recipes  = useSelector((state: RootState) => state.recipes.recipes);
 
@@ -47,7 +47,12 @@ export default function RecipesListScreen({ navigation }: any) {
     }
   }, [dispatch]);
 
-  useFocusEffect(useCallback(() => { loadRecipes(); }, [loadRecipes]));
+  useFocusEffect(useCallback(() => {
+    loadRecipes();
+    if (route.params?.initialCategory) {
+      setSelectedCategory(route.params.initialCategory);
+    }
+  }, [loadRecipes, route.params?.initialCategory]));
 
   const filtered = useMemo(() => {
     return recipes.filter((r) => {
@@ -105,9 +110,15 @@ export default function RecipesListScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Receitas</Text>
-        <Pressable style={styles.addButton} onPress={() => navigation.navigate("CreateRecipe")}>
-          <Ionicons name="add" size={22} color="#fff" />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.communityButton} onPress={() => navigation.navigate("CommunityRecipes")} accessibilityLabel="Receitas da comunidade" accessibilityRole="button">
+            <Ionicons name="earth-outline" size={18} color={colors.primary} />
+            <Text style={styles.communityButtonText}>Comunidade</Text>
+          </Pressable>
+          <Pressable style={styles.addButton} onPress={() => navigation.navigate("CreateRecipe")} accessibilityLabel="Criar receita" accessibilityRole="button">
+            <Ionicons name="add" size={22} color="#fff" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Busca */}
@@ -234,6 +245,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  communityButton: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.primary },
+  communityButtonText: { fontSize: 13, fontWeight: "700", color: colors.primary },
   addButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   searchContainer: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface, borderRadius: 14, marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 },

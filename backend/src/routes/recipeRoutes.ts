@@ -3,6 +3,7 @@ import {
   createRecipe,
   deleteRecipe,
   duplicateRecipe,
+  getCommunityRecipes,
   getRecipeById,
   getRecipes,
   suggestRecipes,
@@ -20,6 +21,9 @@ router.get("/", getRecipes);
 
 // RF16 — deve ficar ANTES de /:id para não ser capturado como parâmetro
 router.get("/suggest", suggestRecipes);
+
+// RF21 — receitas públicas da comunidade (antes de /:id)
+router.get("/community", getCommunityRecipes);
 
 router.get("/:id", getRecipeById);
 router.put("/:id", updateRecipe);

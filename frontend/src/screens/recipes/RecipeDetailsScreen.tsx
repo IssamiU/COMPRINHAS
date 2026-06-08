@@ -12,6 +12,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  TextInput,
   View,
   Image,
   Platform,
@@ -21,10 +22,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "@react-navigation/native";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Ionicons, Feather } from "@expo/vector-icons";
 
-import { store } from "../../store";
+import { store, RootState } from "../../store";
+import StarRating from "../../components/StarRating";
 import {
   startTimer,
   pauseTimer,
@@ -165,7 +167,9 @@ function formatConverted(value: number, unit: string): string {
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function RecipeDetailsScreen({ route, navigation }: any) {
   const { recipeId } = route.params;
-  const dispatch = useDispatch();
+  const dispatch        = useDispatch();
+  const currentUserId   = useSelector((s: RootState) => String(s.auth.user?.id ?? ""));
+  const currentUserName = useSelector((s: RootState) => s.auth.user?.name ?? "Usuário");
 
   const [recipe, setRecipe] = useState<any>(null);
   const [targetServings, setTargetServings] = useState<number>(1);
@@ -178,6 +182,16 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [selectedMinutes, setSelectedMinutes] = useState(5);
   const [duplicating, setDuplicating] = useState(false);
   const [markingPrepared, setMarkingPrepared] = useState(false);
+
+  // RF21 — avaliações
+  const [reviews, setReviews]               = useState<any[]>([]);
+  const [avgRating, setAvgRating]           = useState(0);
+  const [reviewCount, setReviewCount]       = useState(0);
+  const [myRating, setMyRating]             = useState(0);
+  const [myComment, setMyComment]           = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [filterRating, setFilterRating]     = useState(0); // 0 = todas
 
   // RF18 — conversão de unidades
   const [convertVisible, setConvertVisible]     = useState(false);
@@ -251,11 +265,58 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       if (!auth) return;
       const response = await fetch(`${API_URL}/recipes/${recipeId}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
       const data = await response.json();
+      if (response.status === 404) {
+        Alert.alert("Receita não encontrada", "Esta receita foi removida ou não existe mais.", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
       if (!response.ok) throw new Error(data.message);
       const normalized = normalizeRecipe(data);
       setRecipe(normalized);
       setTargetServings(normalized.servings ?? 1);
+      loadReviews();
     } catch { Alert.alert("Erro", "Erro ao carregar receita"); }
+  }
+
+  // RF21 — carrega avaliações da receita
+  async function loadReviews() {
+    setLoadingReviews(true);
+    try {
+      const auth = await getAuth();
+      if (!auth) return;
+      const res = await fetch(`${API_URL}/reviews?recipeId=${recipeId}`, {
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReviews(data.reviews ?? []);
+        setAvgRating(data.avgRating ?? 0);
+        setReviewCount(data.count ?? 0);
+      }
+    } catch {}
+    finally { setLoadingReviews(false); }
+  }
+
+  // RF21 — envia ou atualiza avaliação (upsert)
+  async function submitReview() {
+    if (myRating === 0) { Alert.alert("Avaliação", "Selecione pelo menos 1 estrela."); return; }
+    try {
+      setSubmittingReview(true);
+      const auth = await getAuth();
+      if (!auth) return;
+      const res = await fetch(`${API_URL}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ recipeId, rating: myRating, comment: myComment, authorName: currentUserName }),
+      });
+      if (res.ok) {
+        await loadReviews();
+        setMyRating(0);
+        setMyComment("");
+      }
+    } catch { Alert.alert("Erro", "Não foi possível enviar a avaliação."); }
+    finally { setSubmittingReview(false); }
   }
 
   async function toggleFavorite() {
@@ -294,6 +355,25 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       message: `Confira essa receita no MealSync: ${recipe?.title ?? ""}\n${link}`,
       url: link,
     });
+  }
+
+  async function handleSaveCopy() {
+    try {
+      setDuplicating(true);
+      const auth = await getAuth();
+      if (!auth) return;
+      const response = await fetch(`${API_URL}/recipes/${recipeId}/duplicate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      Alert.alert("Receita salva!", "Uma cópia foi adicionada às suas receitas.");
+    } catch (e: any) {
+      Alert.alert("Erro", e.message || "Erro ao salvar cópia");
+    } finally {
+      setDuplicating(false);
+    }
   }
 
   async function handleDuplicate() {
@@ -409,6 +489,9 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     );
   }
 
+  // RF21 — determina se o usuário logado é dono da receita
+  const isOwner = recipe.userId ? String(recipe.userId) === String(currentUserId) : true;
+
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
@@ -434,12 +517,17 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <View style={styles.heroHeaderRight}>
-              <Pressable style={styles.iconCircleSmall} onPress={() => navigation.navigate("EditRecipe", { recipeId })}>
-                <Feather name="edit-2" size={15} color="#fff" />
-              </Pressable>
-              <Pressable style={styles.iconCircleSmall} onPress={handleDuplicate} disabled={duplicating}>
-                <Feather name="copy" size={15} color="#fff" />
-              </Pressable>
+              {/* RF21 — editar/duplicar só para o dono */}
+              {isOwner && (
+                <>
+                  <Pressable style={styles.iconCircleSmall} onPress={() => navigation.navigate("EditRecipe", { recipeId })}>
+                    <Feather name="edit-2" size={15} color="#fff" />
+                  </Pressable>
+                  <Pressable style={styles.iconCircleSmall} onPress={handleDuplicate} disabled={duplicating}>
+                    <Feather name="copy" size={15} color="#fff" />
+                  </Pressable>
+                </>
+              )}
               {/* RF14 — compartilhar via deep link */}
               <Pressable style={styles.iconCircleSmall} onPress={handleShare} accessibilityLabel="Compartilhar receita" accessibilityRole="button">
                 <Feather name="share" size={15} color="#fff" />
@@ -454,6 +542,10 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         {/* INFO */}
         <View style={styles.section}>
           <Text style={styles.title}>{recipe.title}</Text>
+          {/* RF21 — autor visível apenas em receitas de outros usuários */}
+          {!isOwner && !!recipe.authorName && (
+            <Text style={styles.authorName}>Por {recipe.authorName}</Text>
+          )}
 
           <View style={styles.metaRow}>
             <View style={styles.badge}>
@@ -600,27 +692,112 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
             style={[styles.outlineBtn, markingPrepared && { opacity: 0.6 }]}
             onPress={handleMarkPrepared}
             disabled={markingPrepared}
+            accessibilityLabel="Marcar como preparada"
+            accessibilityRole="button"
           >
             <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
             <Text style={styles.outlineBtnText}>{markingPrepared ? "Registrando..." : "Marcar como preparada"}</Text>
           </Pressable>
+          {!isOwner && (
+            <Pressable
+              style={[styles.outlineBtn, duplicating && { opacity: 0.6 }]}
+              onPress={handleSaveCopy}
+              disabled={duplicating}
+              accessibilityLabel="Salvar cópia nas minhas receitas"
+              accessibilityRole="button"
+            >
+              <Ionicons name="download-outline" size={18} color={colors.primary} />
+              <Text style={styles.outlineBtnText}>{duplicating ? "Salvando..." : "Salvar cópia"}</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* RF21 — Avaliações */}
+        <View style={[styles.section, { marginBottom: 16 }]}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.reviewsSectionTitle}>Avaliações</Text>
+            {reviewCount > 0 && (
+              <View style={styles.avgRow}>
+                <StarRating rating={avgRating} size={15} />
+                <Text style={styles.avgText}>{avgRating.toFixed(1)} ({reviewCount})</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Filtro por estrelas */}
+          {reviewCount > 0 && (
+            <View style={styles.starFilterRow}>
+              {[0, 5, 4, 3, 2, 1].map((n) => (
+                <Pressable
+                  key={n}
+                  style={[styles.starFilterBtn, filterRating === n && styles.starFilterBtnActive]}
+                  onPress={() => setFilterRating(n)}
+                >
+                  <Text style={[styles.starFilterText, filterRating === n && styles.starFilterTextActive]}>
+                    {n === 0 ? "Todas" : `${n}★`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* Formulário — apenas para quem não é dono */}
+          {!isOwner && (
+            <View style={[styles.card, styles.reviewForm]}>
+              <Text style={styles.reviewFormTitle}>Sua avaliação</Text>
+              <StarRating rating={myRating} interactive size={28} onRate={setMyRating} />
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Comentário (opcional)"
+                placeholderTextColor={colors.textMuted}
+                value={myComment}
+                onChangeText={setMyComment}
+                multiline
+                numberOfLines={3}
+              />
+              <Pressable
+                style={[styles.outlineBtn, submittingReview && { opacity: 0.6 }]}
+                onPress={submitReview}
+                disabled={submittingReview}
+                accessibilityLabel="Enviar avaliação"
+                accessibilityRole="button"
+              >
+                <Text style={styles.outlineBtnText}>{submittingReview ? "Enviando..." : "Enviar avaliação"}</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Lista de avaliações */}
+          {loadingReviews ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
+          ) : reviews.length === 0 ? (
+            <Text style={styles.noReviewsText}>Nenhuma avaliação ainda.</Text>
+          ) : (
+            reviews
+              .filter((r) => filterRating === 0 || r.rating === filterRating)
+              .map((review: any) => (
+              <View key={review.id} style={[styles.card, styles.reviewCard]}>
+                <View style={styles.reviewCardHeader}>
+                  <Text style={styles.reviewAuthor}>{review.author_name}</Text>
+                  <StarRating rating={review.rating} size={14} />
+                </View>
+                {!!review.comment && (
+                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                )}
+                <Text style={styles.reviewDate}>
+                  {new Date(review.created_at).toLocaleDateString("pt-BR")}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
       {/* CTA fixo */}
       <View style={styles.ctaBar}>
-        <Pressable style={styles.ctaBtn} onPress={() => setActiveTab("steps")}>
+        <Pressable style={styles.ctaBtn} onPress={() => setActiveTab("steps")} accessibilityLabel="Iniciar preparo" accessibilityRole="button">
           <Ionicons name="play" size={18} color="#fff" />
           <Text style={styles.ctaBtnText}>Iniciar Preparo</Text>
-        </Pressable>
-        <Pressable style={styles.ctaTimerBtn} onPress={() => {
-          if (activeTab === "steps") {
-            Alert.alert("Timer", "Toque no botão 'Definir timer' em cada passo que precisar de controle de tempo.");
-          } else {
-            setActiveTab("steps");
-          }
-        }}>
-          <Ionicons name="time" size={22} color="#fff" />
         </Pressable>
       </View>
 
@@ -791,7 +968,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12,
   },
   ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  ctaTimerBtn: { width: 52, height: 52, borderRadius: 12, backgroundColor: "#F59E0B", alignItems: "center", justifyContent: "center" },
 
   // Modal timer
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
@@ -807,6 +983,27 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.textSecondary, fontWeight: "700", fontSize: 15 },
   modalConfirm: { flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
   modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+
+  // RF21 — avaliações
+  authorName:         { fontSize: 13, color: colors.textSecondary, marginTop: 2, marginBottom: 4 },
+  reviewsHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  reviewsSectionTitle:{ fontSize: 17, fontWeight: "700", color: colors.textPrimary },
+  avgRow:             { flexDirection: "row", alignItems: "center", gap: 6 },
+  avgText:            { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  reviewForm:         { gap: 12, marginBottom: 12 },
+  reviewFormTitle:    { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+  reviewInput:        { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, minHeight: 76, textAlignVertical: "top" },
+  noReviewsText:      { fontSize: 14, color: colors.textMuted, textAlign: "center", marginTop: 12 },
+  starFilterRow:      { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  starFilterBtn:      { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  starFilterBtnActive:{ borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  starFilterText:     { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+  starFilterTextActive:{ color: colors.primaryDark, fontWeight: "700" },
+  reviewCard:         { marginTop: 10, gap: 4 },
+  reviewCardHeader:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  reviewAuthor:       { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
+  reviewComment:      { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+  reviewDate:         { fontSize: 11, color: colors.textMuted },
 
   // RF18 — conversão de unidades
   convertBtn: { paddingHorizontal: 2, paddingVertical: 4 },

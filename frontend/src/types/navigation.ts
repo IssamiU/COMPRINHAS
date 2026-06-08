@@ -16,6 +16,7 @@ export type RecipesStackParamList = {
   EditRecipe: { recipeId: string };
   SuggestByIngredients: undefined;
   History: undefined;
+  CommunityRecipes: undefined;
 };
 
 export type PlannerStackParamList = {

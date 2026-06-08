@@ -22,15 +22,7 @@ const FAQ = [
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 const ACTIONS: { icon: IoniconsName; label: string; subtitle: string; onPress?: () => void }[] = [
-  { icon: "chatbubble-outline", label: "Falar com o suporte",  subtitle: "Resposta em até 24h" },
-  { icon: "mail-outline",       label: "Enviar e-mail",        subtitle: "mealsync420@gmail.com", onPress: () => Linking.openURL("mailto:mealsync420@gmail.com") },
-  { icon: "bug-outline",        label: "Reportar um problema", subtitle: "Bug ou erro no app" },
-  { icon: "star-outline",       label: "Avaliar o app",        subtitle: "Conte o que achou" },
-];
-
-const LEGAL: { icon: IoniconsName; label: string }[] = [
-  { icon: "document-text-outline", label: "Termos de uso" },
-  { icon: "shield-outline",        label: "Política de privacidade" },
+  { icon: "mail-outline", label: "Enviar e-mail", subtitle: "mealsync420@gmail.com", onPress: () => Linking.openURL("mailto:mealsync420@gmail.com") },
 ];
 
 export default function HelpSupportScreen({ navigation }: any) {
@@ -83,18 +75,6 @@ export default function HelpSupportScreen({ navigation }: any) {
                 <Text style={styles.actionTitle}>{a.label}</Text>
                 <Text style={styles.actionSubtitle}>{a.subtitle}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Legal */}
-        <Text style={[styles.section, { marginTop: 24 }]}>LEGAL</Text>
-        <View style={styles.group}>
-          {LEGAL.map((l, i) => (
-            <Pressable key={l.label} style={[styles.actionRow, i > 0 && styles.groupDivider]}>
-              <Ionicons name={l.icon} size={20} color={colors.textMuted} />
-              <Text style={[styles.actionTitle, { flex: 1, marginLeft: 12 }]}>{l.label}</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           ))}

@@ -95,17 +95,84 @@ export async function login(req: Request, res: Response) {
         id: user.id,
         name: user.name,
         email: user.email,
-        preferences: {
-          vegetarian: user.vegetarian,
-          glutenFree: user.gluten_free,
-          lactoseFree: user.lactose_free,
-        },
+        preferences: user.preferences || {},
       },
       accessToken,
       refreshToken,
     });
   } catch (error) {
     return res.status(500).json({ message: "Erro ao realizar login.", error });
+  }
+}
+
+// Busca perfil do usuário logado
+export async function getMe(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId;
+    const result = await pool.query(
+      "SELECT id, name, email, preferences FROM users WHERE id = $1",
+      [userId]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Usuário não encontrado" });
+    const u = result.rows[0];
+    return res.json({ id: u.id, name: u.name, email: u.email, preferences: u.preferences || {} });
+  } catch (error) {
+    return res.status(500).json({ message: "Erro ao buscar perfil" });
+  }
+}
+
+// Atualiza nome, e-mail, senha e/ou preferências do usuário logado
+export async function updateMe(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId;
+    const { name, email, currentPassword, newPassword, preferences } = req.body;
+
+    if (!name?.trim()) return res.status(400).json({ message: "Nome não pode estar vazio" });
+    if (!email?.trim()) return res.status(400).json({ message: "E-mail não pode estar vazio" });
+
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+    if (!result.rows.length) return res.status(404).json({ message: "Usuário não encontrado" });
+    const user = result.rows[0];
+
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ message: "Informe a senha atual" });
+      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!valid) return res.status(400).json({ message: "Senha atual incorreta" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "Nova senha deve ter pelo menos 6 caracteres" });
+      const hash = await bcrypt.hash(newPassword, 10);
+      await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, userId]);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail !== user.email) {
+      const existing = await pool.query(
+        "SELECT id FROM users WHERE email = $1 AND id != $2",
+        [normalizedEmail, userId]
+      );
+      if (existing.rows.length > 0) return res.status(409).json({ message: "E-mail já em uso" });
+    }
+
+    if (preferences !== undefined) {
+      await pool.query(
+        "UPDATE users SET name = $1, email = $2, preferences = $3 WHERE id = $4",
+        [name.trim(), normalizedEmail, JSON.stringify(preferences), userId]
+      );
+    } else {
+      await pool.query(
+        "UPDATE users SET name = $1, email = $2 WHERE id = $3",
+        [name.trim(), normalizedEmail, userId]
+      );
+    }
+
+    const updated = await pool.query(
+      "SELECT id, name, email, preferences FROM users WHERE id = $1",
+      [userId]
+    );
+    const u = updated.rows[0];
+    return res.json({ user: { id: u.id, name: u.name, email: u.email, preferences: u.preferences || {} } });
+  } catch (error) {
+    console.error("Erro ao atualizar perfil:", error);
+    return res.status(500).json({ message: "Erro ao atualizar dados" });
   }
 }
 
