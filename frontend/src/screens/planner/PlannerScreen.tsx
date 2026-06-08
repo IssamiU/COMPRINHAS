@@ -263,7 +263,7 @@ export default function PlannerScreen() {
             <View key={day} style={styles.dayCard}>
               <View style={styles.dayHeader}>
                 <Text style={styles.dayTitle}>{day}</Text>
-                <Pressable style={styles.addButton} onPress={() => openAddMeal(day)}>
+                <Pressable style={styles.addButton} onPress={() => openAddMeal(day)} accessibilityRole="button" accessibilityLabel={`Adicionar refeição em ${day}`}>
                   <Ionicons name="add" size={16} color={colors.primary} />
                   <Text style={styles.addButtonText}>Adicionar</Text>
                 </Pressable>
@@ -281,16 +281,16 @@ export default function PlannerScreen() {
                         <View style={styles.reminderRow}>
                           <Ionicons name="notifications" size={11} color={colors.primary} />
                           <Text style={styles.reminderText}>{formatTime(meal.reminderTime.hour, meal.reminderTime.minute)}</Text>
-                          <Pressable onPress={() => handleEditReminder(meal)}><Text style={styles.reminderAction}>Editar</Text></Pressable>
-                          <Pressable onPress={() => cancelReminder(meal)}><Text style={[styles.reminderAction, { color: colors.danger }]}>Remover</Text></Pressable>
+                          <Pressable onPress={() => handleEditReminder(meal)} accessibilityRole="button" accessibilityLabel="Editar lembrete"><Text style={styles.reminderAction}>Editar</Text></Pressable>
+                          <Pressable onPress={() => cancelReminder(meal)} accessibilityRole="button" accessibilityLabel="Remover lembrete"><Text style={[styles.reminderAction, { color: colors.danger }]}>Remover</Text></Pressable>
                         </View>
                       ) : (
-                        <Pressable onPress={() => handleEditReminder(meal)}>
+                        <Pressable onPress={() => handleEditReminder(meal)} accessibilityRole="button" accessibilityLabel="Ativar lembrete para esta refeição">
                           <Text style={styles.reminderAdd}>+ Ativar lembrete</Text>
                         </Pressable>
                       )}
                     </View>
-                    <Pressable style={styles.removeButton} onPress={() => handleRemoveMeal(meal)}>
+                    <Pressable style={styles.removeButton} onPress={() => handleRemoveMeal(meal)} accessibilityRole="button" accessibilityLabel="Remover refeição">
                       <Ionicons name="close" size={16} color={colors.textMuted} />
                     </Pressable>
                   </View>
@@ -310,7 +310,7 @@ export default function PlannerScreen() {
                 <Text style={styles.modalTitle}>Qual refeição?</Text>
                 <Text style={styles.modalSub}>{selectedDay}</Text>
                 {MEAL_TYPES.map((type) => (
-                  <Pressable key={type} style={styles.optionBtn} onPress={() => handleSelectMealType(type)}>
+                  <Pressable key={type} style={styles.optionBtn} onPress={() => handleSelectMealType(type)} accessibilityRole="button" accessibilityLabel={`Selecionar ${type}`}>
                     <Text style={styles.optionIcon}>{MEAL_ICONS[type]}</Text>
                     <Text style={styles.optionText}>{type}</Text>
                     <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -329,16 +329,16 @@ export default function PlannerScreen() {
                   keyExtractor={(item) => item.id}
                   style={{ maxHeight: 320 }}
                   renderItem={({ item }) => (
-                    <Pressable style={styles.recipeItem} onPress={() => handleSelectRecipe(item.id)}>
+                    <Pressable style={styles.recipeItem} onPress={() => handleSelectRecipe(item.id)} accessibilityRole="button" accessibilityLabel={`Selecionar receita ${item.title}`}>
                       <Text style={styles.recipeItemTitle}>{item.title}</Text>
                       <Text style={styles.recipeItemMeta}>{item.category} · {item.prepTimeMinutes} min</Text>
                     </Pressable>
                   )}
                 />
-                <Pressable style={styles.backBtn} onPress={() => setModalStep("mealType")}>
+                <Pressable style={styles.backBtn} onPress={() => setModalStep("mealType")} accessibilityRole="button" accessibilityLabel="Voltar ao tipo de refeição">
                   <Text style={styles.backBtnText}>← Voltar</Text>
                 </Pressable>
-                <Pressable style={styles.cancelBtn} onPress={closeModal}>
+                <Pressable style={styles.cancelBtn} onPress={closeModal} accessibilityRole="button" accessibilityLabel="Cancelar">
                   <Text style={styles.cancelBtnText}>Cancelar</Text>
                 </Pressable>
               </>
@@ -360,10 +360,10 @@ export default function PlannerScreen() {
           </View>
           <Text style={styles.pickerPreview}>Lembrete às {formatTime(selectedHour, selectedMinute)}</Text>
           <View style={styles.reminderBtns}>
-            <Pressable style={styles.cancelBtn} onPress={() => setReminderModalVisible(false)}>
+            <Pressable style={styles.cancelBtn} onPress={() => setReminderModalVisible(false)} accessibilityRole="button" accessibilityLabel="Cancelar lembrete">
               <Text style={styles.cancelBtnText}>Cancelar</Text>
             </Pressable>
-            <Pressable style={styles.confirmBtn} onPress={confirmReminder}>
+            <Pressable style={styles.confirmBtn} onPress={confirmReminder} accessibilityRole="button" accessibilityLabel="Confirmar lembrete">
               <Text style={styles.confirmBtnText}>Confirmar</Text>
             </Pressable>
           </View>

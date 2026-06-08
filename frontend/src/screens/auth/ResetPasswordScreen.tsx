@@ -75,10 +75,10 @@ export default function ResetPasswordScreen({ navigation }: any) {
           <Text style={styles.label}>Confirmar senha</Text>
           <TextInput style={styles.input} placeholder="Repita a nova senha" placeholderTextColor={colors.textSecondary} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry returnKeyType="done" onSubmitEditing={handleReset} />
 
-          <Pressable style={[styles.primaryButton, loading && styles.buttonDisabled]} onPress={handleReset} disabled={loading}>
+          <Pressable style={[styles.primaryButton, loading && styles.buttonDisabled]} onPress={handleReset} disabled={loading} accessibilityRole="button" accessibilityLabel="Redefinir senha">
             <Text style={styles.primaryButtonText}>{loading ? "Salvando..." : "Redefinir senha"}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("ForgotPassword")}>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("ForgotPassword")} accessibilityRole="button" accessibilityLabel="Reenviar código de recuperação">
             <Text style={styles.secondaryButtonText}>Reenviar código</Text>
           </Pressable>
         </View>

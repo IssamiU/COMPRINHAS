@@ -92,7 +92,7 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.sectionCard}>
           {items.map((item, i) => (
             <React.Fragment key={item.label}>
-              <Pressable style={styles.menuItem} onPress={item.onPress}>
+              <Pressable style={styles.menuItem} onPress={item.onPress} accessibilityRole="button" accessibilityLabel={item.label}>
                 <View style={[styles.menuIcon, { backgroundColor: item.iconBg ?? colors.primaryLight }]}>
                   <Ionicons name={item.icon} size={18} color={item.iconColor ?? colors.primary} />
                 </View>
@@ -131,7 +131,7 @@ export default function ProfileScreen({ navigation }: any) {
         <Section title="ATIVIDADE" items={activityItems} />
         <Section title="OUTROS"    items={otherItems} />
 
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+        <Pressable style={styles.logoutButton} onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Sair da conta">
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Sair da conta</Text>
         </Pressable>

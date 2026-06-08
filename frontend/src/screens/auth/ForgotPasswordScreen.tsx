@@ -64,10 +64,10 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             <Text style={styles.title}>E-mail enviado</Text>
             <Text style={styles.subtitle}>Se este e-mail estiver cadastrado, você receberá um código de recuperação em breve.</Text>
             <Text style={styles.hint}>Verifique sua caixa de entrada e spam.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("ResetPassword")}>
+            <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("ResetPassword")} accessibilityRole="button" accessibilityLabel="Inserir código de recuperação">
               <Text style={styles.primaryButtonText}>Inserir código</Text>
             </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("Login")}>
+            <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("Login")} accessibilityRole="button" accessibilityLabel="Voltar ao login">
               <Text style={styles.secondaryButtonText}>Voltar ao login</Text>
             </Pressable>
           </View>
@@ -94,10 +94,10 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             returnKeyType="send"
             onSubmitEditing={handleSend}
           />
-          <Pressable style={[styles.primaryButton, loading && styles.buttonDisabled]} onPress={handleSend} disabled={loading}>
+          <Pressable style={[styles.primaryButton, loading && styles.buttonDisabled]} onPress={handleSend} disabled={loading} accessibilityRole="button" accessibilityLabel="Enviar código de recuperação">
             <Text style={styles.primaryButtonText}>{loading ? "Enviando..." : "Enviar código"}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar ao login">
             <Text style={styles.secondaryButtonText}>Voltar ao login</Text>
           </Pressable>
         </View>

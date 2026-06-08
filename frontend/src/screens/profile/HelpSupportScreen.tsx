@@ -55,7 +55,7 @@ export default function HelpSupportScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()}>
+        <Pressable style={styles.iconBtn} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Ajuda e Suporte</Text>
@@ -71,7 +71,7 @@ export default function HelpSupportScreen({ navigation }: any) {
         <View style={styles.group}>
           {FAQ.map((item, i) => (
             <View key={i} style={i > 0 ? styles.groupDivider : undefined}>
-              <Pressable style={styles.faqHead} onPress={() => setOpen(open === i ? null : i)}>
+              <Pressable style={styles.faqHead} onPress={() => setOpen(open === i ? null : i)} accessibilityRole="button" accessibilityLabel={item.q}>
                 <Text style={styles.faqQ}>{item.q}</Text>
                 <Ionicons name={open === i ? "chevron-up" : "chevron-down"} size={18} color={colors.textMuted} />
               </Pressable>
@@ -87,7 +87,7 @@ export default function HelpSupportScreen({ navigation }: any) {
         <Text style={[styles.section, { marginTop: 24 }]}>CONTATO</Text>
         <View style={styles.group}>
           {ACTIONS.map((a, i) => (
-            <Pressable key={a.label} onPress={a.onPress} style={[styles.actionRow, i > 0 && styles.groupDivider]}>
+            <Pressable key={a.label} onPress={a.onPress} style={[styles.actionRow, i > 0 && styles.groupDivider]} accessibilityRole="button" accessibilityLabel={a.label}>
               <View style={styles.actionIcon}>
                 <Ionicons name={a.icon} size={18} color={colors.primary} />
               </View>

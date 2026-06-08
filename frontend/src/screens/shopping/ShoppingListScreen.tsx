@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -34,6 +34,8 @@ import {
 import { ShoppingList, ShoppingListItem } from "../../types/shopping";
 import { generateShoppingListFromPlanner } from "../../utils/generateShoppingList";
 import { useTheme } from "../../theme/ThemeContext";
+// RNF3/6 — cache offline da lista ativa
+import { cacheShoppingList } from "../../services/offlineCache";
 
 const UNITS = [
   "g", "kg", "ml", "l", "xícara", "colher de sopa",
@@ -68,7 +70,7 @@ function NotFoundScreen({ onBack }: { onBack: () => void }) {
         <Ionicons name="cart-outline" size={48} color={colors.textMuted} />
         <Text style={styles.notFoundTitle}>Lista não encontrada</Text>
         <Text style={styles.notFoundSub}>Volte e selecione ou crie uma lista.</Text>
-        <Pressable style={styles.backBtn} onPress={onBack}>
+        <Pressable style={styles.backBtn} onPress={onBack} accessibilityRole="button" accessibilityLabel="Voltar às listas">
           <Text style={styles.backBtnText}>Voltar</Text>
         </Pressable>
       </View>
@@ -91,6 +93,9 @@ function ShoppingListContent({
   const plannedMeals = useSelector((s: RootState) => s.planner.plannedMeals);
   const recipes      = useSelector((s: RootState) => s.recipes.recipes);
   const { colors } = useTheme();
+
+  // RNF3/6 — sincroniza lista ativa no cache offline sempre que mudar
+  useEffect(() => { cacheShoppingList(list.items); }, [list.items]);
   // RF23 — estilos reativos ao tema
   const styles = useMemo(() => StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
@@ -343,18 +348,20 @@ function ShoppingListContent({
           style={styles.iconBtn}
           onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("ShoppingLists")}
           hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{list.name}</Text>
         <View style={{ flexDirection: "row" }}>
-          <Pressable style={styles.iconBtn} onPress={() => navigation.navigate("BarcodeScanner", { listId })}>
+          <Pressable style={styles.iconBtn} onPress={() => navigation.navigate("BarcodeScanner", { listId })} accessibilityRole="button" accessibilityLabel="Escanear código de barras">
             <Ionicons name="barcode-outline" size={22} color={colors.textPrimary} />
           </Pressable>
-          <Pressable style={styles.iconBtn} onPress={handleExportPDF}>
+          <Pressable style={styles.iconBtn} onPress={handleExportPDF} accessibilityRole="button" accessibilityLabel="Exportar lista como PDF">
             <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
           </Pressable>
-          <Pressable style={styles.iconBtn} onPress={handleShare}>
+          <Pressable style={styles.iconBtn} onPress={handleShare} accessibilityRole="button" accessibilityLabel="Compartilhar lista">
             <Ionicons name="share-outline" size={22} color={colors.textPrimary} />
           </Pressable>
         </View>
@@ -374,11 +381,11 @@ function ShoppingListContent({
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.quickActions}>
-          <Pressable style={styles.quickBtn} onPress={handleGenerate}>
+          <Pressable style={styles.quickBtn} onPress={handleGenerate} accessibilityRole="button" accessibilityLabel="Gerar lista do planejamento">
             <Ionicons name="sparkles-outline" size={15} color={colors.primary} />
             <Text style={styles.quickBtnText}>Do planejamento</Text>
           </Pressable>
-          <Pressable style={[styles.quickBtn, styles.quickBtnDanger]} onPress={handleClear}>
+          <Pressable style={[styles.quickBtn, styles.quickBtnDanger]} onPress={handleClear} accessibilityRole="button" accessibilityLabel="Limpar lista de compras">
             <Ionicons name="trash-outline" size={15} color={colors.danger} />
             <Text style={[styles.quickBtnText, { color: colors.danger }]}>Limpar lista</Text>
           </Pressable>
@@ -429,10 +436,10 @@ function ShoppingListContent({
       </ScrollView>
 
       <View style={styles.fabs}>
-        <Pressable style={[styles.fab, styles.fabSecondary]} onPress={handleGenerate}>
+        <Pressable style={[styles.fab, styles.fabSecondary]} onPress={handleGenerate} accessibilityRole="button" accessibilityLabel="Gerar lista do planejamento">
           <Ionicons name="sparkles" size={20} color={colors.primary} />
         </Pressable>
-        <Pressable style={[styles.fab, styles.fabPrimary]} onPress={openAdd}>
+        <Pressable style={[styles.fab, styles.fabPrimary]} onPress={openAdd} accessibilityRole="button" accessibilityLabel="Adicionar item à lista">
           <Ionicons name="add" size={26} color="#fff" />
         </Pressable>
       </View>
@@ -558,10 +565,10 @@ function ShoppingListContent({
                 </View>
               )}
               <View style={styles.modalActions}>
-                <Pressable style={styles.cancelBtn} onPress={() => { resetForm(); setAddOpen(false); }}>
+                <Pressable style={styles.cancelBtn} onPress={() => { resetForm(); setAddOpen(false); }} accessibilityRole="button" accessibilityLabel="Cancelar">
                   <Text style={styles.cancelBtnText}>Cancelar</Text>
                 </Pressable>
-                <Pressable style={styles.confirmBtn} onPress={handleSaveItem}>
+                <Pressable style={styles.confirmBtn} onPress={handleSaveItem} accessibilityRole="button" accessibilityLabel={editingItem ? "Salvar item" : "Adicionar item à lista"}>
                   <Text style={styles.confirmBtnText}>{editingItem ? "Salvar" : "Adicionar"}</Text>
                 </Pressable>
               </View>

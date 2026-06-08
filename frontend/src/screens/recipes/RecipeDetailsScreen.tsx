@@ -48,7 +48,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// â”€â”€ WheelPicker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WheelPicker ──────────────────────────────────────────────────────────────
 const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
@@ -120,7 +120,7 @@ function WheelPicker({
   );
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function calcSecondsLeft(startedAt: number, totalSeconds: number): number {
   return Math.max(0, totalSeconds - Math.floor((Date.now() - startedAt) / 1000));
 }
@@ -131,8 +131,8 @@ function getTimersFromStore() {
 
 type TabKey = "ingredients" | "steps";
 
-// RF18 â€” unidades culinÃ¡rias para conversÃ£o
-const VOLUME_UNITS = ["ml", "l", "xÃ­cara", "copo", "colher de sopa", "colher de chÃ¡"];
+// RF18 — unidades culinárias para conversão
+const VOLUME_UNITS = ["ml", "l", "xícara", "copo", "colher de sopa", "colher de chá"];
 const WEIGHT_UNITS = ["g", "kg", "oz"];
 
 function getCompatibleUnits(unit: string): string[] {
@@ -142,12 +142,12 @@ function getCompatibleUnits(unit: string): string[] {
   return [];
 }
 
-// Unidades culinÃ¡rias exibem fraÃ§Ãµes; mÃ©tricas exibem decimais
-const CULINARY_UNITS = ["xÃ­cara", "copo", "colher de sopa", "colher de chÃ¡"];
+// Unidades culinárias exibem frações; métricas exibem decimais
+const CULINARY_UNITS = ["xícara", "copo", "colher de sopa", "colher de chá"];
 
 function toFraction(value: number): string {
   if (value <= 0) return "0";
-  // menor que 1/4 â†’ inÃºtil na prÃ¡tica, avisar em vez de mostrar 0
+  // menor que 1/4 → inútil na prática, avisar em vez de mostrar 0
   if (value < 0.125) return "< 1/4";
   const quarters = Math.round(value * 4);
   const whole    = Math.floor(quarters / 4);
@@ -164,12 +164,12 @@ function formatConverted(value: number, unit: string): string {
   return String(Math.round(value * 100) / 100);
 }
 
-// â”€â”€ Main Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function RecipeDetailsScreen({ route, navigation }: any) {
   const { recipeId } = route.params;
   const dispatch        = useDispatch();
   const currentUserId   = useSelector((s: RootState) => String(s.auth.user?.id ?? ""));
-  const currentUserName = useSelector((s: RootState) => s.auth.user?.name ?? "UsuÃ¡rio");
+  const currentUserName = useSelector((s: RootState) => s.auth.user?.name ?? "Usuário");
   const { colors } = useTheme();
 
   const [recipe, setRecipe] = useState<any>(null);
@@ -184,7 +184,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [duplicating, setDuplicating] = useState(false);
   const [markingPrepared, setMarkingPrepared] = useState(false);
 
-  // RF21 â€” avaliaÃ§Ãµes
+  // RF21 — avaliações
   const [reviews, setReviews]               = useState<any[]>([]);
   const [avgRating, setAvgRating]           = useState(0);
   const [reviewCount, setReviewCount]       = useState(0);
@@ -194,7 +194,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [filterRating, setFilterRating]     = useState(0); // 0 = todas
 
-  // RF18 â€” conversÃ£o de unidades
+  // RF18 — conversão de unidades
   const [convertVisible, setConvertVisible]     = useState(false);
   const [convertIngredient, setConvertIngredient] = useState<any>(null);
   const [convertToUnit, setConvertToUnit]       = useState("");
@@ -250,14 +250,12 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
   async function handleTimerFinished(stepIndex: number, notificationId: string | null) {
     dispatch(clearTimer({ recipeId, stepIndex }));
     setFinishedSteps((prev) => new Set(prev).add(stepIndex));
+    // Cancela a notificação agendada se ainda não disparou (race condition improvável)
     if (notificationId) await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => {});
+    // Apenas vibração — a notificação agendada em startTimerForStep já tocou
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await Notifications.scheduleNotificationAsync({
-      content: { title: "â° Timer finalizado!", body: `Passo ${stepIndex + 1} concluÃ­do.`, sound: true },
-      trigger: null,
-    });
   }
 
   async function loadRecipe() {
@@ -267,7 +265,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       const response = await fetch(`${API_URL}/recipes/${recipeId}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
       const data = await response.json();
       if (response.status === 404) {
-        Alert.alert("Receita nÃ£o encontrada", "Esta receita foi removida ou nÃ£o existe mais.", [
+        Alert.alert("Receita não encontrada", "Esta receita foi removida ou não existe mais.", [
           { text: "OK", onPress: () => navigation.goBack() },
         ]);
         return;
@@ -280,7 +278,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     } catch { Alert.alert("Erro", "Erro ao carregar receita"); }
   }
 
-  // RF21 â€” carrega avaliaÃ§Ãµes da receita
+  // RF21 — carrega avaliações da receita
   async function loadReviews() {
     setLoadingReviews(true);
     try {
@@ -299,9 +297,9 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     finally { setLoadingReviews(false); }
   }
 
-  // RF21 â€” envia ou atualiza avaliaÃ§Ã£o (upsert)
+  // RF21 — envia ou atualiza avaliação (upsert)
   async function submitReview() {
-    if (myRating === 0) { Alert.alert("AvaliaÃ§Ã£o", "Selecione pelo menos 1 estrela."); return; }
+    if (myRating === 0) { Alert.alert("Avaliação", "Selecione pelo menos 1 estrela."); return; }
     try {
       setSubmittingReview(true);
       const auth = await getAuth();
@@ -316,7 +314,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         setMyRating(0);
         setMyComment("");
       }
-    } catch { Alert.alert("Erro", "NÃ£o foi possÃ­vel enviar a avaliaÃ§Ã£o."); }
+    } catch { Alert.alert("Erro", "Não foi possível enviar a avaliação."); }
     finally { setSubmittingReview(false); }
   }
 
@@ -341,15 +339,15 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.accessToken}` },
         body: JSON.stringify({ recipeId }),
       });
-      Alert.alert("Receita preparada!", "Registrado no seu histÃ³rico.", [
-        { text: "Ver histÃ³rico", onPress: () => navigation.navigate("History") },
+      Alert.alert("Receita preparada!", "Registrado no seu histórico.", [
+        { text: "Ver histórico", onPress: () => navigation.navigate("History") },
         { text: "OK" },
       ]);
-    } catch { Alert.alert("Erro", "NÃ£o foi possÃ­vel registrar o preparo."); }
+    } catch { Alert.alert("Erro", "Não foi possível registrar o preparo."); }
     finally { setMarkingPrepared(false); }
   }
 
-  // RF14 â€” compartilhar receita via deep link
+  // RF14 — compartilhar receita via deep link
   async function handleShare() {
     const link = `mealsync://recipe/${recipeId}`;
     await Share.share({
@@ -369,16 +367,16 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
-      Alert.alert("Receita salva!", "Uma cÃ³pia foi adicionada Ã s suas receitas.");
+      Alert.alert("Receita salva!", "Uma cópia foi adicionada às suas receitas.");
     } catch (e: any) {
-      Alert.alert("Erro", e.message || "Erro ao salvar cÃ³pia");
+      Alert.alert("Erro", e.message || "Erro ao salvar cópia");
     } finally {
       setDuplicating(false);
     }
   }
 
   async function handleDuplicate() {
-    Alert.alert("Duplicar receita", "Uma cÃ³pia serÃ¡ criada e aberta para ediÃ§Ã£o.", [
+    Alert.alert("Duplicar receita", "Uma cópia será criada e aberta para edição.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Duplicar", onPress: async () => {
         try {
@@ -395,7 +393,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     ]);
   }
 
-  // RF18 â€” busca conversÃ£o no backend proxy
+  // RF18 — busca conversão no backend proxy
   async function handleConvert(toUnit: string) {
     if (!convertIngredient || !recipe) return;
     setConvertToUnit(toUnit);
@@ -424,7 +422,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
 
   function confirmTimer() {
     const totalSeconds = selectedHours * 3600 + selectedMinutes * 60;
-    if (totalSeconds <= 0) { Alert.alert("AtenÃ§Ã£o", "Defina pelo menos 1 minuto."); return; }
+    if (totalSeconds <= 0) { Alert.alert("Atenção", "Defina pelo menos 1 minuto."); return; }
     setModalVisible(false);
     startTimerForStep(modalStepIndex, totalSeconds);
   }
@@ -437,7 +435,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     let notificationId: string | null = null;
     try {
       notificationId = await Notifications.scheduleNotificationAsync({
-        content: { title: "â° Timer finalizado!", body: `Passo ${stepIndex + 1} concluÃ­do.`, sound: true },
+        content: { title: "⏰ Timer finalizado!", body: `Passo ${stepIndex + 1} concluído.`, sound: true },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
       });
     } catch {}
@@ -608,7 +606,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
     );
   }
 
-  // RF21 â€” determina se o usuÃ¡rio logado Ã© dono da receita
+  // RF21 — determina se o usuário logado é dono da receita
   const isOwner = recipe.userId ? String(recipe.userId) === String(currentUserId) : true;
 
   return (
@@ -636,7 +634,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <View style={styles.heroHeaderRight}>
-              {/* RF21 â€” editar/duplicar sÃ³ para o dono */}
+              {/* RF21 — editar/duplicar só para o dono */}
               {isOwner && (
                 <>
                   <Pressable style={styles.iconCircleSmall} onPress={() => navigation.navigate("EditRecipe", { recipeId })}>
@@ -647,7 +645,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   </Pressable>
                 </>
               )}
-              {/* RF14 â€” compartilhar via deep link */}
+              {/* RF14 — compartilhar via deep link */}
               <Pressable style={styles.iconCircleSmall} onPress={handleShare} accessibilityLabel="Compartilhar receita" accessibilityRole="button">
                 <Feather name="share" size={15} color="#fff" />
               </Pressable>
@@ -661,7 +659,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         {/* INFO */}
         <View style={styles.section}>
           <Text style={styles.title}>{recipe.title}</Text>
-          {/* RF21 â€” autor visÃ­vel apenas em receitas de outros usuÃ¡rios */}
+          {/* RF21 — autor visível apenas em receitas de outros usuários */}
           {!isOwner && !!recipe.authorName && (
             <Text style={styles.authorName}>Por {recipe.authorName}</Text>
           )}
@@ -680,16 +678,16 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{targetServings} porÃ§Ãµes</Text>
+              <Text style={styles.statText}>{targetServings} porções</Text>
             </View>
           </View>
         </View>
 
-        {/* STEPPER PORÃ‡Ã•ES */}
+        {/* STEPPER PORÇÕES */}
         <View style={[styles.card, styles.section]}>
           <View style={styles.stepperRow}>
             <View>
-              <Text style={styles.stepperLabel}>PorÃ§Ãµes</Text>
+              <Text style={styles.stepperLabel}>Porções</Text>
               <Text style={styles.stepperHint}>Ajuste os ingredientes</Text>
             </View>
             <View style={styles.stepper}>
@@ -728,7 +726,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   </Text>
                 </View>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                {/* RF18 â€” botÃ£o de conversÃ£o visÃ­vel apenas para unidades suportadas */}
+                {/* RF18 — botão de conversão visível apenas para unidades suportadas */}
                 {getCompatibleUnits(ingredient.unit).length > 0 && (
                   <Pressable
                     style={styles.convertBtn}
@@ -772,15 +770,15 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                           </Pressable>
                         ) : timer.status === "done" ? (
                           <View style={styles.timerRow}>
-                            <Text style={styles.timerDone}>âœ“ ConcluÃ­do</Text>
+                            <Text style={styles.timerDone}>✓ Concluído</Text>
                             <Pressable style={styles.timerActionBtn} onPress={() => handleResetTimer(index)}>
-                              <Text style={styles.timerActionText}>â†º Novo</Text>
+                              <Text style={styles.timerActionText}>↺ Novo</Text>
                             </Pressable>
                           </View>
                         ) : (
                           <View style={styles.timerRow}>
                             <Text style={[styles.timerDisplay, timer.secondsLeft <= 10 && { color: colors.danger }]}>
-                              â± {formatTime(timer.secondsLeft)}
+                              ⏱ {formatTime(timer.secondsLeft)}
                             </Text>
                             {timer.running ? (
                               <Pressable style={styles.timerActionBtn} onPress={() => handlePauseTimer(index)}>
@@ -792,7 +790,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                               </Pressable>
                             )}
                             <Pressable style={styles.timerActionBtn} onPress={() => handleResetTimer(index)}>
-                              <Text style={styles.timerActionText}>â†º</Text>
+                              <Text style={styles.timerActionText}>↺</Text>
                             </Pressable>
                           </View>
                         )}
@@ -805,7 +803,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* AÃ‡Ã•ES SECUNDÃRIAS */}
+        {/* AÇÕES SECUNDÁRIAS */}
         <View style={[styles.section, styles.secondaryActions]}>
           <Pressable
             style={[styles.outlineBtn, markingPrepared && { opacity: 0.6 }]}
@@ -822,19 +820,19 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
               style={[styles.outlineBtn, duplicating && { opacity: 0.6 }]}
               onPress={handleSaveCopy}
               disabled={duplicating}
-              accessibilityLabel="Salvar cÃ³pia nas minhas receitas"
+              accessibilityLabel="Salvar cópia nas minhas receitas"
               accessibilityRole="button"
             >
               <Ionicons name="download-outline" size={18} color={colors.primary} />
-              <Text style={styles.outlineBtnText}>{duplicating ? "Salvando..." : "Salvar cÃ³pia"}</Text>
+              <Text style={styles.outlineBtnText}>{duplicating ? "Salvando..." : "Salvar cópia"}</Text>
             </Pressable>
           )}
         </View>
 
-        {/* RF21 â€” AvaliaÃ§Ãµes */}
+        {/* RF21 — Avaliações */}
         <View style={[styles.section, { marginBottom: 16 }]}>
           <View style={styles.reviewsHeader}>
-            <Text style={styles.reviewsSectionTitle}>AvaliaÃ§Ãµes</Text>
+            <Text style={styles.reviewsSectionTitle}>Avaliações</Text>
             {reviewCount > 0 && (
               <View style={styles.avgRow}>
                 <StarRating rating={avgRating} size={15} />
@@ -853,21 +851,21 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                   onPress={() => setFilterRating(n)}
                 >
                   <Text style={[styles.starFilterText, filterRating === n && styles.starFilterTextActive]}>
-                    {n === 0 ? "Todas" : `${n}â˜…`}
+                    {n === 0 ? "Todas" : `${n}★`}
                   </Text>
                 </Pressable>
               ))}
             </View>
           )}
 
-          {/* FormulÃ¡rio â€” apenas para quem nÃ£o Ã© dono */}
+          {/* Formulário — apenas para quem não é dono */}
           {!isOwner && (
             <View style={[styles.card, styles.reviewForm]}>
-              <Text style={styles.reviewFormTitle}>Sua avaliaÃ§Ã£o</Text>
+              <Text style={styles.reviewFormTitle}>Sua avaliação</Text>
               <StarRating rating={myRating} interactive size={28} onRate={setMyRating} />
               <TextInput
                 style={styles.reviewInput}
-                placeholder="ComentÃ¡rio (opcional)"
+                placeholder="Comentário (opcional)"
                 placeholderTextColor={colors.textMuted}
                 value={myComment}
                 onChangeText={setMyComment}
@@ -878,19 +876,19 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
                 style={[styles.outlineBtn, submittingReview && { opacity: 0.6 }]}
                 onPress={submitReview}
                 disabled={submittingReview}
-                accessibilityLabel="Enviar avaliaÃ§Ã£o"
+                accessibilityLabel="Enviar avaliação"
                 accessibilityRole="button"
               >
-                <Text style={styles.outlineBtnText}>{submittingReview ? "Enviando..." : "Enviar avaliaÃ§Ã£o"}</Text>
+                <Text style={styles.outlineBtnText}>{submittingReview ? "Enviando..." : "Enviar avaliação"}</Text>
               </Pressable>
             </View>
           )}
 
-          {/* Lista de avaliaÃ§Ãµes */}
+          {/* Lista de avaliações */}
           {loadingReviews ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
           ) : reviews.length === 0 ? (
-            <Text style={styles.noReviewsText}>Nenhuma avaliaÃ§Ã£o ainda.</Text>
+            <Text style={styles.noReviewsText}>Nenhuma avaliação ainda.</Text>
           ) : (
             reviews
               .filter((r) => filterRating === 0 || r.rating === filterRating)
@@ -920,7 +918,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         </Pressable>
       </View>
 
-      {/* RF18 â€” Modal de conversÃ£o de unidade */}
+      {/* RF18 — Modal de conversão de unidade */}
       <Modal visible={convertVisible} transparent animationType="slide" onRequestClose={() => setConvertVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setConvertVisible(false)} />
         <View style={styles.modalCard}>
@@ -972,7 +970,7 @@ export default function RecipeDetailsScreen({ route, navigation }: any) {
         <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
         <View style={styles.modalCard}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>â± Definir timer</Text>
+          <Text style={styles.modalTitle}>⏱ Definir timer</Text>
           <Text style={styles.modalSub}>Passo {modalStepIndex + 1}</Text>
           <View style={styles.pickerRow}>
             <WheelPicker items={HOURS_ITEMS} selectedIndex={selectedHours} onIndexChange={setSelectedHours} label="horas" />

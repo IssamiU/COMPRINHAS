@@ -70,7 +70,7 @@ export default function RegisterScreen({ navigation }: any) {
 
   function ToggleOption({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
     return (
-      <Pressable style={[styles.optionButton, selected && styles.optionButtonSelected]} onPress={onPress}>
+      <Pressable style={[styles.optionButton, selected && styles.optionButtonSelected]} onPress={onPress} accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: selected }}>
         <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
           {selected ? "✓ " : ""}{label}
         </Text>
@@ -93,10 +93,10 @@ export default function RegisterScreen({ navigation }: any) {
         <ToggleOption label="Sem glúten"   selected={glutenFree}   onPress={() => setGlutenFree(!glutenFree)} />
         <ToggleOption label="Sem lactose"  selected={lactoseFree}  onPress={() => setLactoseFree(!lactoseFree)} />
 
-        <Pressable style={styles.primaryButton} onPress={handleRegister}>
+        <Pressable style={styles.primaryButton} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Criar conta">
           <Text style={styles.primaryButtonText}>Cadastrar</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar para login">
           <Text style={styles.secondaryButtonText}>Voltar para login</Text>
         </Pressable>
       </View>

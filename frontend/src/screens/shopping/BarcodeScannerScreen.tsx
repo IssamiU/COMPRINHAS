@@ -91,10 +91,10 @@ export default function BarcodeScannerScreen({ navigation, route }: any) {
         <View style={styles.center}>
           <Ionicons name="camera-outline" size={64} color={colors.textMuted} />
           <Text style={styles.permText}>Permissão de câmera necessária para escanear produtos.</Text>
-          <Pressable style={styles.permBtn} onPress={requestPermission}>
+          <Pressable style={styles.permBtn} onPress={requestPermission} accessibilityRole="button" accessibilityLabel="Permitir acesso à câmera">
             <Text style={styles.permBtnText}>Permitir câmera</Text>
           </Pressable>
-          <Pressable style={styles.backTextBtn} onPress={() => navigation.goBack()}>
+          <Pressable style={styles.backTextBtn} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
             <Text style={styles.backTextBtnText}>Voltar</Text>
           </Pressable>
         </View>
@@ -145,7 +145,7 @@ export default function BarcodeScannerScreen({ navigation, route }: any) {
         <View style={[styles.corner, styles.br]} />
       </View>
       <SafeAreaView style={styles.headerOverlay}>
-        <Pressable style={styles.closeBtn} onPress={() => navigation.goBack()} hitSlop={12}>
+        <Pressable style={styles.closeBtn} onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar scanner">
           <Ionicons name="close" size={28} color="#fff" />
         </Pressable>
         <Text style={styles.title}>Escanear produto</Text>
@@ -167,11 +167,11 @@ export default function BarcodeScannerScreen({ navigation, route }: any) {
               <Text style={styles.panelTitle}>Adicionado!</Text>
               <Text style={styles.panelSub} numberOfLines={2}>"{resultName}" foi adicionado à lista.</Text>
               <View style={styles.panelBtns}>
-                <Pressable style={styles.btnSecondary} onPress={resetScan}>
+                <Pressable style={styles.btnSecondary} onPress={resetScan} accessibilityRole="button" accessibilityLabel="Escanear mais produtos">
                   <Ionicons name="scan-outline" size={16} color={colors.primary} />
                   <Text style={styles.btnSecondaryText}>Escanear mais</Text>
                 </Pressable>
-                <Pressable style={styles.btnPrimary} onPress={() => navigation.goBack()}>
+                <Pressable style={styles.btnPrimary} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar à lista de compras">
                   <Text style={styles.btnPrimaryText}>Voltar à lista</Text>
                 </Pressable>
               </View>
@@ -183,11 +183,11 @@ export default function BarcodeScannerScreen({ navigation, route }: any) {
               <Text style={styles.panelTitle}>Produto não encontrado</Text>
               <Text style={styles.panelSub}>Código não encontrado na base de dados.</Text>
               <View style={styles.panelBtns}>
-                <Pressable style={styles.btnSecondary} onPress={resetScan}>
+                <Pressable style={styles.btnSecondary} onPress={resetScan} accessibilityRole="button" accessibilityLabel="Tentar escanear outro produto">
                   <Ionicons name="scan-outline" size={16} color={colors.primary} />
                   <Text style={styles.btnSecondaryText}>Tentar outro</Text>
                 </Pressable>
-                <Pressable style={styles.btnPrimary} onPress={() => navigation.goBack()}>
+                <Pressable style={styles.btnPrimary} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
                   <Text style={styles.btnPrimaryText}>Voltar</Text>
                 </Pressable>
               </View>
@@ -199,7 +199,7 @@ export default function BarcodeScannerScreen({ navigation, route }: any) {
               <Text style={styles.panelTitle}>Erro de conexão</Text>
               <Text style={styles.panelSub}>Verifique a conexão com a internet e o servidor.</Text>
               <View style={styles.panelBtns}>
-                <Pressable style={[styles.btnSecondary, { flex: 1 }]} onPress={resetScan}>
+                <Pressable style={[styles.btnSecondary, { flex: 1 }]} onPress={resetScan} accessibilityRole="button" accessibilityLabel="Tentar novamente">
                   <Text style={styles.btnSecondaryText}>Tentar novamente</Text>
                 </Pressable>
               </View>

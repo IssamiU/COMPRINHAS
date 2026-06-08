@@ -196,7 +196,7 @@ export default function CreateRecipeScreen({ navigation, route }: any) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable style={styles.headerBtn} onPress={() => navigation.goBack()}>
+        <Pressable style={styles.headerBtn} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Nova Receita</Text>
@@ -332,7 +332,7 @@ export default function CreateRecipeScreen({ navigation, route }: any) {
 
       {/* CTA fixo */}
       <View style={styles.ctaBar}>
-        <Pressable style={[styles.ctaBtn, (saving || uploading) && { opacity: 0.7 }]} onPress={handleSave} disabled={saving || uploading}>
+        <Pressable style={[styles.ctaBtn, (saving || uploading) && { opacity: 0.7 }]} onPress={handleSave} disabled={saving || uploading} accessibilityRole="button" accessibilityLabel="Salvar receita">
           <Feather name="check" size={18} color="#fff" />
           <Text style={styles.ctaBtnText}>{saving ? "Salvando..." : uploading ? "Enviando imagem..." : "Salvar Receita"}</Text>
         </Pressable>

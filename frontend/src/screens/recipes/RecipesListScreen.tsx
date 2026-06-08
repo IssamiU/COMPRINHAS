@@ -20,6 +20,8 @@ import { setRecipes, updateRecipe } from "../../store/slices/recipesSlice";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
+// RNF3/6 — cache offline de receitas
+import { cacheRecipes, getCachedRecipes } from "../../services/offlineCache";
 // RF23 — cores reativas ao tema claro/escuro
 import { useTheme } from "../../theme/ThemeContext";
 
@@ -42,10 +44,14 @@ export default function RecipesListScreen({ navigation, route }: any) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Erro ao carregar receitas");
-      dispatch(setRecipes(data.map(normalizeRecipe)));
-    } catch (error) {
-      console.log("Erro ao carregar receitas:", error);
-      Alert.alert("Erro", "Erro ao carregar receitas");
+      const normalized = data.map(normalizeRecipe);
+      dispatch(setRecipes(normalized));
+      // RNF3/6 — persiste no cache para uso offline
+      cacheRecipes(normalized);
+    } catch {
+      // RNF3/6 — sem internet: usa cache local
+      const cached = await getCachedRecipes();
+      if (cached.length > 0) dispatch(setRecipes(cached));
     }
   }, [dispatch]);
 

@@ -1,12 +1,19 @@
 import bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 import type { Request, Response } from "express";
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 
 import { pool } from "../config/database";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+// RF29 — transporte de e-mail via Gmail (App Password)
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function register(req: Request, res: Response) {
   try {
@@ -211,9 +218,9 @@ export async function forgotPassword(req: Request, res: Response) {
       [user.id, token]
     );
 
-    await sgMail.send({
+    await mailer.sendMail({
       to: email,
-      from: process.env.SENDGRID_FROM_EMAIL!,
+      from: process.env.GMAIL_USER,
       subject: "Redefinição de senha — MealSync",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
@@ -233,8 +240,8 @@ export async function forgotPassword(req: Request, res: Response) {
     return res.status(200).json({
       message: "Se este e-mail estiver cadastrado, você receberá as instruções em breve.",
     });
-  } catch (error) {
-    console.error("Erro ao enviar e-mail de recuperação:", error);
+  } catch (error: any) {
+    console.error("Erro ao enviar e-mail de recuperação:", error?.message ?? error);
     return res.status(500).json({ message: "Erro ao processar solicitação." });
   }
 }
