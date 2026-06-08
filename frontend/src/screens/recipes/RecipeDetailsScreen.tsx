@@ -952,8 +952,8 @@ const styles = StyleSheet.create({
   timerActionText: { color: colors.textSecondary, fontWeight: "600", fontSize: 12 },
 
   // Secondary actions
-  secondaryActions: { flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 8 },
-  outlineBtn: { flex: 1, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.primary, paddingVertical: 13, borderRadius: 12 },
+  secondaryActions: { flexDirection: "column", gap: 8, marginBottom: 8 },
+  outlineBtn: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.primary, paddingVertical: 13, borderRadius: 12 },
   outlineBtnText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
 
   // CTA

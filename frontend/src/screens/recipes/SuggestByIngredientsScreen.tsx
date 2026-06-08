@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { normalizeRecipe } from "../../utils/normalizeRecipe";
@@ -91,7 +93,14 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <View style={styles.header}>
+        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar" accessibilityRole="button">
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>O que tenho em casa?</Text>
+        <View style={{ width: 36 }} />
+      </View>
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
@@ -219,11 +228,15 @@ export default function SuggestByIngredientsScreen({ navigation }: any) {
           </Pressable>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
   container: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: 20, paddingBottom: 40 },
   headerCard: { marginBottom: 20, alignItems: "center" },

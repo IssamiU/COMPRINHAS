@@ -144,12 +144,36 @@ export async function getRecipeById(req: Request, res: Response) {
   }
 }
 
-// RF21 — lista todas as receitas públicas da comunidade
+// RF21 — lista receitas públicas da comunidade com paginação, filtro de categoria e favoritos
 export async function getCommunityRecipes(req: Request, res: Response) {
   try {
     const userId = getUserId(req);
-    const recipes = await Recipe.find({ isPublic: true }).sort({ createdAt: -1 });
-    return res.json(recipes.map((r) => formatRecipeForUser(r, userId)));
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = 10;
+    const category = req.query.category as string | undefined;
+    const favoritesOnly = req.query.favoritesOnly === "true";
+
+    const query: any = { isPublic: true };
+    if (category && category !== "Todas") query.category = category;
+    if (favoritesOnly) {
+      query.$or = [
+        { userId, isFavorite: true },
+        { savedBy: userId },
+      ];
+    }
+
+    const total = await Recipe.countDocuments(query);
+    const recipes = await Recipe.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    return res.json({
+      recipes: recipes.map((r) => formatRecipeForUser(r, userId)),
+      total,
+      page,
+      hasMore: page * limit < total,
+    });
   } catch (error) {
     console.error("Erro ao buscar receitas da comunidade:", error);
     return res.status(500).json({ message: "Erro ao buscar receitas da comunidade" });

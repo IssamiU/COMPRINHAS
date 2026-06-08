@@ -77,8 +77,8 @@ function RecipesTabStack() {
       <RecipesStack.Screen name="RecipeDetails"        component={RecipeDetailsScreen}        options={{ headerShown: false }} />
       <RecipesStack.Screen name="CreateRecipe"         component={CreateRecipeScreen}         options={{ headerShown: false }} />
       <RecipesStack.Screen name="EditRecipe"           component={EditRecipeScreen}           options={{ title: "Editar receita" }} />
-      <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ title: "O que tenho em casa?" }} />
-      <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ title: "Histórico de preparo" }} />
+      <RecipesStack.Screen name="SuggestByIngredients" component={SuggestByIngredientsScreen} options={{ headerShown: false }} />
+      <RecipesStack.Screen name="History"              component={HistoryScreen}              options={{ headerShown: false }} />
       <RecipesStack.Screen name="CommunityRecipes"     component={CommunityRecipesScreen}     options={{ headerShown: false }} />
     </RecipesStack.Navigator>
   );

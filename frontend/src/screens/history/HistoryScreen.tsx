@@ -8,7 +8,9 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { API_URL } from "../../services/api";
 import { getAuth } from "../../storage/authStorage";
 import { colors } from "../../theme/colors";
@@ -134,43 +136,67 @@ export default function HistoryScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.topHeader}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar" accessibilityRole="button">
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.topHeaderTitle}>Histórico de preparo</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (history.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Nenhuma receita preparada</Text>
-          <Text style={styles.emptyText}>
-            Marque uma receita como preparada para vê-la aqui.
-          </Text>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.topHeader}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar" accessibilityRole="button">
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.topHeaderTitle}>Histórico de preparo</Text>
+          <View style={{ width: 36 }} />
         </View>
-      </View>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Nenhuma receita preparada</Text>
+            <Text style={styles.emptyText}>
+              Marque uma receita como preparada para vê-la aqui.
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <FlatList
-      data={history}
-      keyExtractor={(item) => item.id}
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-      ListHeaderComponent={
-        <View style={styles.headerCard}>
-          <Text style={styles.screenTitle}>Histórico</Text>
-          <Text style={styles.screenSubtitle}>
-            Receitas que você já preparou.
-          </Text>
-          {/* Botão apagar tudo */}
-          <Pressable style={styles.clearAllButton} onPress={handleClearAll}>
-            <Text style={styles.clearAllText}>Apagar histórico completo</Text>
-          </Pressable>
-        </View>
-      }
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <View style={styles.topHeader}>
+        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar" accessibilityRole="button">
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </Pressable>
+        <Text style={styles.topHeaderTitle}>Histórico de preparo</Text>
+        <View style={{ width: 36 }} />
+      </View>
+      <FlatList
+        data={history}
+        keyExtractor={(item) => item.id}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.headerCard}>
+            <Text style={styles.screenSubtitle}>
+              Receitas que você já preparou.
+            </Text>
+            <Pressable style={styles.clearAllButton} onPress={handleClearAll}>
+              <Text style={styles.clearAllText}>Apagar histórico completo</Text>
+            </Pressable>
+          </View>
+        }
       renderItem={({ item }) => (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -212,10 +238,15 @@ export default function HistoryScreen({ navigation }: any) {
         </View>
       )}
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  topHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  topHeaderTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
   list: { backgroundColor: colors.background },
   listContent: { padding: 16, paddingBottom: 40, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
